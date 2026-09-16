@@ -7,14 +7,16 @@
  * Type, Address, Primary Warehouse, Active Orders and Status are all real
  * fields now (`School.is_active`, and `active_orders_count` — annotated on
  * the server, see `SchoolViewSet.get_queryset` for exactly what "active"
- * counts). "Students" is the one column with nothing behind it: AsOne has
- * no student roster anywhere in the system — a student is a free-text name
- * on an order, not a record — so it reads as a dash rather than an invented
- * number, the same rule `KpiRow` follows for a figure that hasn't arrived.
+ * counts). Students remains a gap: AsOne has no student roster anywhere in
+ * the system, a student is a free-text name on an order, not a record. The
+ * server can answer a real, different question instead — distinct student
+ * names across every order the school has placed — but that field isn't
+ * pushed yet; wire this in once it is, rather than reading a field this
+ * client's actual server doesn't have.
  */
 
 import { School as SchoolIcon } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Badge, EmptyState, Pagination } from '@/components'
 import { paths } from '@/routes/paths'
 import type { School } from '@/api/types'
@@ -41,6 +43,7 @@ export function SchoolsTable({
   onPageChange,
   onAdd,
 }: SchoolsTableProps) {
+  const navigate = useNavigate()
   const pageCount = Math.max(Math.ceil(totalCount / PAGE_SIZE), 1)
 
   if (loading) {
@@ -95,11 +98,26 @@ export function SchoolsTable({
           </thead>
           <tbody>
             {schools.map((school) => (
-              <tr key={school.id}>
+              // The whole row opens the school, not just the name — same
+              // reasoning as the Orders table (see OrdersTable.tsx): a list
+              // of things to open shouldn't make you hunt for the one
+              // clickable cell. The name stays a real link too, so
+              // middle-click, ctrl-click and the keyboard all still work.
+              <tr
+                key={school.id}
+                className="schools-table__row--clickable"
+                onClick={() => navigate(paths.schoolDetail(school.id))}
+              >
                 <td className="schools-table__td-name">
-                  <Link className="schools-table__name-link" to={paths.schoolDetail(school.id)}>
+                  <a
+                    className="schools-table__name-link"
+                    href={paths.schoolDetail(school.id)}
+                    onClick={(event) => {
+                      if (!event.metaKey && !event.ctrlKey) event.preventDefault()
+                    }}
+                  >
                     {school.name}
-                  </Link>
+                  </a>
                 </td>
                 <td>
                   <Badge tone={school.level === 'HS' ? 'purple' : 'info'}>
@@ -111,10 +129,7 @@ export function SchoolsTable({
                 <td className="schools-table__td-num schools-table__orders-num">
                   {school.active_orders_count}
                 </td>
-                <td
-                  className="schools-table__td-num schools-table__td-muted"
-                  title="AsOne has no student roster yet — a student is a free-text name on an order, not a record"
-                >
+                <td className="schools-table__td-num" title="Not available yet">
                   —
                 </td>
                 <td className="schools-table__td-status">

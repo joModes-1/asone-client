@@ -1,13 +1,24 @@
 /**
  * Catalog — master data.
  *
- * Reads for the shell and dashboard, plus the Locations screens — tailoring
- * centers, warehouses and schools. The rest of the catalogue (garments,
- * sizes, SKUs, prices, kits) arrives with the master-data phase.
+ * Reads for the shell and dashboard, the Locations screens (tailoring
+ * centers, warehouses and schools), and now Inventory & Products —
+ * garments, sizes, SKUs and minimum stock levels.
  */
 
 import { get, patch, post } from './http'
-import type { Page, School, SchoolLevel, Sku, TailoringCenter, Warehouse } from './types'
+import type {
+  Garment,
+  GarmentSchoolLevel,
+  MinimumStockLevel,
+  Page,
+  School,
+  SchoolLevel,
+  Size,
+  Sku,
+  TailoringCenter,
+  Warehouse,
+} from './types'
 
 // ---------------------------------------------------------------------------
 // Locations — Tailoring Centers, Warehouses, Schools
@@ -127,10 +138,67 @@ export function updateSchool(id: number, input: Partial<SchoolInput>) {
 export function skus(params?: {
   garment?: number
   size?: number
+  garment__school_level?: GarmentSchoolLevel
   is_active?: boolean
   page?: number
   /** Capped at 200 by the server's pagination class. */
   page_size?: number
 }) {
   return get<Page<Sku>>('/catalog/skus/', params ?? undefined)
+}
+
+export interface SkuInput {
+  garment: number
+  size: number
+  /** Filled in from the garment and size on the server if left blank. */
+  description?: string
+  is_active?: boolean
+}
+
+export function createSku(input: SkuInput) {
+  return post<Sku>('/catalog/skus/', input)
+}
+
+// ---------------------------------------------------------------------------
+// Garments and sizes — what a SKU is made of.
+// ---------------------------------------------------------------------------
+
+export function garments(params?: {
+  school_level?: GarmentSchoolLevel
+  is_active?: boolean
+  page?: number
+  page_size?: number
+}) {
+  return get<Page<Garment>>('/catalog/garments/', params ?? undefined)
+}
+
+export function sizes(params?: { page?: number; page_size?: number }) {
+  return get<Page<Size>>('/catalog/sizes/', params ?? undefined)
+}
+
+// ---------------------------------------------------------------------------
+// Minimum stock levels — the reorder floor, one row per SKU per warehouse.
+// ---------------------------------------------------------------------------
+
+export function minimumStockLevels(params?: {
+  sku?: number
+  warehouse?: number
+  page?: number
+  page_size?: number
+}) {
+  return get<Page<MinimumStockLevel>>('/catalog/minimum-stock-levels/', params ?? undefined)
+}
+
+export interface MinimumStockLevelInput {
+  sku: number
+  warehouse: number
+  minimum_quantity: number
+}
+
+export function createMinimumStockLevel(input: MinimumStockLevelInput) {
+  return post<MinimumStockLevel>('/catalog/minimum-stock-levels/', input)
+}
+
+export function updateMinimumStockLevel(id: number, input: Partial<MinimumStockLevelInput>) {
+  return patch<MinimumStockLevel>(`/catalog/minimum-stock-levels/${id}/`, input)
 }

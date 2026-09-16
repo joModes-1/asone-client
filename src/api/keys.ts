@@ -28,7 +28,8 @@ export const keys = {
     ['orders', 'part-processed', warehouseId] as const,
   shipments: (warehouseId: number | null) => ['orders', 'shipments', warehouseId] as const,
   backorders: () => ['orders', 'backorders'] as const,
-  schoolOrdersForSchool: (schoolId: number) => ['orders', 'by-school', schoolId] as const,
+  schoolOrdersForSchool: (schoolId: number, page: number) =>
+    ['orders', 'by-school', schoolId, page] as const,
   receipts: () => ['receipts'] as const,
   warehouses: () => ['warehouses'] as const,
 
@@ -51,6 +52,21 @@ export const keys = {
   tailoringCenters: () => ['tailoring-centers'] as const,
   tailoringCentersList: (page: number) => ['tailoring-centers', 'list', page] as const,
   tailoringCenter: (id: number) => ['tailoring-centers', 'detail', id] as const,
+
+  // Inventory & Products — SKUs, the garments and sizes they're built from,
+  // and the per-warehouse reorder floor. Stock figures reuse `stockLevels`
+  // above; these are the catalogue side of the screen.
+  garments: () => ['garments'] as const,
+  sizes: () => ['sizes'] as const,
+  inventorySkus: (
+    level: string | null,
+    sizeId: number | null,
+    isActive: boolean | null,
+  ) => ['inventory', 'skus', level, sizeId, isActive] as const,
+  minimumStockLevels: (warehouseId: number | null) =>
+    ['minimum-stock-levels', warehouseId] as const,
+  skuMovements: (skuId: number) => ['movements', 'by-sku', skuId] as const,
+  shippedTotals: (warehouseId: number | null) => ['movements', 'shipped-totals', warehouseId] as const,
 
   // Users & Roles. `roles` is the fixed list of five and never changes, so
   // it can be cached hard; `users` changes whenever a lead adds somebody.

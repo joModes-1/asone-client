@@ -3422,7 +3422,7 @@ export interface components {
             /** @default  */
             notes: string;
         };
-        /** @description The six tiles across the top — F62. */
+        /** @description The tiles across the top — F62, plus the warehouse hub console's own. */
         DashboardSummary: {
             /** @description Units on hand and free to promise. */
             available_units: number;
@@ -3800,6 +3800,19 @@ export interface components {
          *
          *     Inactive accounts are rejected by Django's own authentication backend, so
          *     deactivating a user is enough to lock them out at the next login.
+         *
+         *     ## The refusal wording
+         *
+         *     simplejwt's default is "No active account found with the given
+         *     credentials", which is wrong here in two ways. It is not true — the view
+         *     has already established through `user_with_access` that the account
+         *     exists and is active, so by the time this serializer runs the *only*
+         *     thing that can be wrong is the password. And it reads as a system fault
+         *     rather than a typo, so people retype the same password expecting a
+         *     different answer.
+         *
+         *     Saying "that password is not right" gives nothing away that the step
+         *     before has not already given away.
          */
         Login: {
             email: string;
@@ -4740,6 +4753,8 @@ export interface components {
             is_active?: boolean;
             /** @default 0 */
             readonly active_orders_count: number;
+            /** @default 0 */
+            readonly distinct_students_count: number;
         };
         /** @description An order, reading. Doubles as the invoice — same number, same lines. */
         PatchedSchoolOrder: {
@@ -5307,6 +5322,8 @@ export interface components {
             is_active?: boolean;
             /** @default 0 */
             readonly active_orders_count: number;
+            /** @default 0 */
+            readonly distinct_students_count: number;
         };
         /** @description Something the school ordered that the warehouse could not fill. */
         SchoolBackorder: {
@@ -9319,6 +9336,8 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
+                /** @description Narrow to one site. Ignored for Warehouse Staff, who are already scoped to their own; an all-locations role sees every site without it. */
+                warehouse?: number;
             };
             header?: never;
             path?: never;
@@ -9368,6 +9387,7 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
+                school?: number;
                 /**
                  * @description * `HOLD` - On hold — awaiting payment
                  *     * `RELEASED` - Released to the warehouse
@@ -9477,6 +9497,7 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
+                school?: number;
                 /**
                  * @description * `HOLD` - On hold — awaiting payment
                  *     * `RELEASED` - Released to the warehouse
@@ -9514,6 +9535,7 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
+                school?: number;
                 /**
                  * @description * `HOLD` - On hold — awaiting payment
                  *     * `RELEASED` - Released to the warehouse
@@ -9607,6 +9629,7 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
+                school?: number;
                 /**
                  * @description * `HOLD` - On hold — awaiting payment
                  *     * `RELEASED` - Released to the warehouse
@@ -9666,6 +9689,7 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
+                school?: number;
                 /**
                  * @description * `HOLD` - On hold — awaiting payment
                  *     * `RELEASED` - Released to the warehouse
@@ -9725,6 +9749,7 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
+                school?: number;
                 /**
                  * @description * `HOLD` - On hold — awaiting payment
                  *     * `RELEASED` - Released to the warehouse
@@ -9768,6 +9793,7 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
+                school?: number;
                 /**
                  * @description * `HOLD` - On hold — awaiting payment
                  *     * `RELEASED` - Released to the warehouse
@@ -9861,6 +9887,7 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
+                school?: number;
                 /**
                  * @description * `HOLD` - On hold — awaiting payment
                  *     * `RELEASED` - Released to the warehouse

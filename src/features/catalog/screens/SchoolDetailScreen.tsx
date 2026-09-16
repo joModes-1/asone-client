@@ -10,11 +10,15 @@
  * that the underlying access actually changed.
  *
  * Total Students remains a gap: there is no student roster anywhere in the
- * system (a student is a free-text name on an order, not a record). Total
- * Revenue and Pending Shipments are left as gaps too for now even though the
- * same order list this screen now fetches could answer both — worth wiring
+ * system (a student is a free-text name on an order, not a record). The
+ * server has a `distinct_students_count` field ready to answer this from
+ * the same order list, but it isn't pushed yet — wire this in once it is,
+ * rather than reading a field this client's actual server doesn't have.
+ *
+ * Total Revenue and Pending Shipments are left as gaps for now even though
+ * the same order list this screen fetches could answer both — worth wiring
  * once that's confirmed wanted, rather than doing it silently alongside an
- * unrelated fix. Students, Shipments and Backorders (the tabs) are gaps for
+ * unrelated fix. The Students, Shipments and Backorders tabs are gaps for
  * the same reasons as before — see TAB_GAPS.
  *
  * Earlier drafts of this screen filled every gap with fake numbers — a
@@ -36,7 +40,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Badge, EmptyState, LoadingScreen } from '@/components'
+import { Badge, EmptyState, LoadingScreen, Pagination } from '@/components'
 import { formatUGX } from '@/domain/money'
 import { paymentLabel, paymentTone, schoolOrderTone } from '@/domain/status'
 import { AppShell } from '@/features/shell/components/AppShell'
@@ -72,11 +76,14 @@ export function SchoolDetailScreen() {
   const { school, isLoading } = useSchool(schoolId)
   const [tab, setTab] = useState<SchoolTab>('Orders')
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [ordersPage, setOrdersPage] = useState(1)
   const {
     orders,
+    totalCount: ordersTotal,
+    pageSize: ordersPageSize,
     isLoading: ordersLoading,
     isError: ordersErrored,
-  } = useSchoolOrdersForSchool(schoolId)
+  } = useSchoolOrdersForSchool(schoolId, ordersPage)
   const { warehouses } = useWarehouseOptions()
 
   if (isLoading) return <LoadingScreen message="Loading school…" />
@@ -203,6 +210,10 @@ export function SchoolDetailScreen() {
               orders={orders}
               loading={ordersLoading}
               errored={ordersErrored}
+              page={ordersPage}
+              totalCount={ordersTotal}
+              pageSize={ordersPageSize}
+              onPageChange={setOrdersPage}
             />
           ) : (
             <EmptyState
@@ -233,19 +244,26 @@ export function SchoolDetailScreen() {
 /**
  * The real Orders table — see the module comment for what unlocked this.
  *
- * `page_size: 100` in the hook behind this means a school with more than
- * 100 orders would only show its first page here; fine for now given real
- * volumes, but worth a "view all" link to a proper filtered list once one
- * exists, rather than raising the page size indefinitely.
+ * Paginated the same way `/orders` pages the full list — same `Pagination`
+ * component, same footer placement — rather than fetching every order a
+ * school has ever placed into one ever-growing table.
  */
 function SchoolOrdersPanel({
   orders,
   loading,
   errored,
+  page,
+  totalCount,
+  pageSize,
+  onPageChange,
 }: {
   orders: SchoolOrder[]
   loading: boolean
   errored: boolean
+  page: number
+  totalCount: number
+  pageSize: number
+  onPageChange: (page: number) => void
 }) {
   if (loading) {
     return (
@@ -275,6 +293,8 @@ function SchoolOrdersPanel({
       />
     )
   }
+
+  const pageCount = Math.max(Math.ceil(totalCount / pageSize), 1)
 
   return (
     <div className="school-orders-table-card">
@@ -317,6 +337,17 @@ function SchoolOrdersPanel({
           ))}
         </tbody>
       </table>
+
+      <div className="table-card__footer">
+        <Pagination
+          page={Math.min(page, pageCount)}
+          pageCount={pageCount}
+          totalItems={totalCount}
+          pageSize={pageSize}
+          onChange={onPageChange}
+          noun="orders"
+        />
+      </div>
     </div>
   )
 }

@@ -40,6 +40,7 @@ export function movements(params?: {
   movement_type?: string
   document_number?: string
   page?: number
+  page_size?: number
 }) {
   return get<Page<StockMovement>>('/inventory/movements/', params ?? undefined)
 }

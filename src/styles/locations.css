@@ -183,6 +183,10 @@
   background-color: var(--surface-sunken);
 }
 
+.schools-table__row--clickable {
+  cursor: pointer;
+}
+
 .schools-table__name-link {
   font-weight: 700;
   color: var(--text-primary);
