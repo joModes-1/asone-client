@@ -34,6 +34,7 @@ import { OrderDetailScreen } from '@/features/orders/screens/OrderDetailScreen'
 import { OrdersListScreen } from '@/features/orders/screens/OrdersListScreen'
 import { UserDetailScreen } from '@/features/users/screens/UserDetailScreen'
 import { UsersRolesScreen } from '@/features/users/screens/UsersRolesScreen'
+import { SettingsScreen } from '@/features/settings/screens/SettingsScreen'
 import { CreateProductionOrderScreen } from '@/features/production/screens/CreateProductionOrderScreen'
 import { ProductionOrderDetailScreen } from '@/features/production/screens/ProductionOrderDetailScreen'
 import { AdjustmentsScreen } from '@/features/adjustments/screens/AdjustmentsScreen'
@@ -76,6 +77,7 @@ const SCREENS: Record<string, ComponentType> = {
   '/backorders': BackordersScreen,
   '/users': UsersRolesScreen,
   '/adjustments': AdjustmentsScreen,
+  '/settings': SettingsScreen,
   // The landing view is the picking backlog; despatched shipments are the
   // history behind it.
   '/shipments': PickingScreen,
