@@ -106,7 +106,78 @@
 }
 
 .status-dot--active .status-dot__mark { background: var(--success); }
-.status-dot--inactive .status-dot__mark { background: var(--text-muted); }
+.status-dot--inactive .status-dot__mark { background: var(--error); }
+.status-dot--inactive { color: var(--error); }
+.status-dot--pending .status-dot__mark { background: var(--warning); }
+.status-dot--pending { color: var(--warning); }
+
+/* ---------------------------------------------------------------------------
+ * Status dropdown — the same control on the table and the detail banner
+ * ------------------------------------------------------------------------ */
+
+.status-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.status-dropdown__trigger {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.status-dropdown__trigger:hover { border-color: var(--border); }
+
+.status-dropdown__trigger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status-dropdown__trigger svg { color: var(--text-muted); margin-left: 2px; }
+
+.status-dropdown__panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  padding: var(--space-1);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.status-dropdown__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--text-body);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.status-dropdown__option:hover { background: var(--surface-sunken); }
+
+.status-dropdown__option--active .status-dot__mark--active { background: var(--success); }
+
+.status-dropdown__option--inactive {
+  color: var(--error);
+}
+
+.status-dropdown__option--inactive .status-dot__mark { background: var(--error); }
 
 /* ---------------------------------------------------------------------------
  * Permissions matrix
@@ -561,4 +632,132 @@
 .bell__item--clickable:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * User detail screen — the banner over two info cards
+ * ------------------------------------------------------------------------ */
+
+.user-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  border-radius: var(--radius-lg);
+  color: var(--text-on-accent);
+}
+
+.user-banner__avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-pill);
+  background: var(--on-overlay-dim);
+  font-size: var(--text-h2);
+  font-weight: var(--weight-bold);
+  color: var(--text-on-accent);
+}
+
+.user-banner__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+}
+
+.user-banner__name {
+  margin: 0;
+  font-size: var(--text-h2);
+  font-weight: var(--weight-bold);
+  color: var(--text-on-accent);
+}
+
+.user-banner__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  font-size: var(--text-body);
+  color: var(--text-on-accent);
+  opacity: 0.9;
+}
+
+.user-banner__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-banner__badges {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* The status dropdown's trigger inherits plain text colour by default; on
+   the gradient it needs to read as light, not dark-on-dark. */
+.user-banner__badges .status-dropdown__trigger {
+  color: var(--text-on-accent);
+  border-color: var(--on-overlay-dim);
+}
+
+.user-banner__badges .status-dropdown__trigger svg { color: var(--text-on-accent); }
+
+.user-banner__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.user-detail-heading {
+  margin: 0;
+  font-size: var(--text-h3);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.user-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 760px) {
+  .user-detail-grid { grid-template-columns: 1fr; }
+  .user-banner { flex-wrap: wrap; }
+}
+
+.user-detail-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.user-detail-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--table-rule);
+}
+
+.user-detail-field:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.user-detail-field__label {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.user-detail-field__value {
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  text-align: right;
 }

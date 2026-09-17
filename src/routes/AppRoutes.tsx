@@ -32,6 +32,7 @@ import { ReportsIndexScreen } from '@/features/reports/screens/ReportsIndexScree
 import { StockReportScreen } from '@/features/reports/screens/StockReportScreen'
 import { OrderDetailScreen } from '@/features/orders/screens/OrderDetailScreen'
 import { OrdersListScreen } from '@/features/orders/screens/OrdersListScreen'
+import { UserDetailScreen } from '@/features/users/screens/UserDetailScreen'
 import { UsersRolesScreen } from '@/features/users/screens/UsersRolesScreen'
 import { CreateProductionOrderScreen } from '@/features/production/screens/CreateProductionOrderScreen'
 import { ProductionOrderDetailScreen } from '@/features/production/screens/ProductionOrderDetailScreen'
@@ -259,6 +260,21 @@ export function AppRoutes() {
               <RequireAuth>
                 <RequireAccess requires="table_updates">
                   <WarehouseDetailScreen />
+                </RequireAccess>
+              </RequireAuth>
+            }
+          />
+
+          {/*
+            Reached from a Users row, not the sidebar — same reasoning and
+            same guard as `/schools/:id` above.
+          */}
+          <Route
+            path="/users/:id"
+            element={
+              <RequireAuth>
+                <RequireAccess requires="table_updates">
+                  <UserDetailScreen />
                 </RequireAccess>
               </RequireAuth>
             }

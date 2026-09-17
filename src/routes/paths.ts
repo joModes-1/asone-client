@@ -26,4 +26,5 @@ export const paths = {
   receiving: '/receiving',
   backorders: '/backorders',
   users: '/users',
+  userDetail: (id: number | string) => `/users/${id}`,
 } as const

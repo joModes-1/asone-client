@@ -5,16 +5,26 @@
  * tracks — there is no separate presence/activity feed, so this is a sign-in
  * timestamp shown under a friendlier label, not a live "seen 2 minutes ago".
  *
+ * A real user's row opens their detail screen — the same account, with more
+ * room than a table cell has. Status is its own control rather than part of
+ * that click target: it is a dropdown offering both Active and Deactivate
+ * regardless of the account's current state, so choosing one there acts
+ * immediately without leaving the table for the detail screen first.
+ *
  * `pendingRequests` are not users — nobody has assigned them a role yet, so
- * there is no account to list. They appear here anyway rather than on a
- * separate screen, because "somebody asking to join the Users list" belongs
- * in the Users list: Role reads "No Role" and Status reads "Pending",
- * clicking either opens the same Approve/Decline review a Needs Attention
- * click does.
+ * there is no account to list, and no detail screen to open. They appear
+ * here anyway rather than on a separate screen, because "somebody asking to
+ * join the Users list" belongs in the Users list: Role reads "No Role" and
+ * Status reads "Pending", clicking either opens the same Approve/Decline
+ * review a Needs Attention click does.
  */
 
+import { useNavigate } from 'react-router-dom'
 import { Users as UsersIcon } from 'lucide-react'
 import { Badge, EmptyState, SkeletonRows } from '@/components'
+import { paths } from '@/routes/paths'
+import { useActivateUser, useDeactivateUser } from '../hooks/useUsers'
+import { StatusDropdown } from './StatusDropdown'
 import type { RegistrationRequest, UserAdmin } from '@/api/types'
 
 interface UsersTableProps {
@@ -45,6 +55,10 @@ function lastActive(iso: string | null): string {
 }
 
 export function UsersTable({ users, pendingRequests = [], loading, onReviewPending }: UsersTableProps) {
+  const navigate = useNavigate()
+  const activateUser = useActivateUser()
+  const deactivateUser = useDeactivateUser()
+
   if (loading) return <SkeletonRows rows={8} height="44px" />
 
   if (users.length === 0 && pendingRequests.length === 0) {
@@ -94,13 +108,20 @@ export function UsersTable({ users, pendingRequests = [], loading, onReviewPendi
               </td>
               <td>—</td>
               <td>
-                <Badge tone="warning">Pending</Badge>
+                <span className="status-dot status-dot--pending">
+                  <span className="status-dot__mark" aria-hidden />
+                  Pending
+                </span>
               </td>
               <td>Requested {new Date(request.created_at).toLocaleDateString()}</td>
             </tr>
           ))}
           {users.map((user) => (
-            <tr key={user.id}>
+            <tr
+              key={user.id}
+              className="ledger__row--clickable"
+              onClick={() => navigate(paths.userDetail(user.id))}
+            >
               <td className="ledger__strong">
                 {`${user.first_name} ${user.last_name}`.trim() || user.email}
               </td>
@@ -109,11 +130,13 @@ export function UsersTable({ users, pendingRequests = [], loading, onReviewPendi
                 <Badge tone="info">{user.role_display}</Badge>
               </td>
               <td>{siteFor(user)}</td>
-              <td>
-                <span className={`status-dot status-dot--${user.is_active ? 'active' : 'inactive'}`}>
-                  <span className="status-dot__mark" aria-hidden />
-                  {user.is_active ? 'Active' : 'Inactive'}
-                </span>
+              <td onClick={(event) => event.stopPropagation()}>
+                <StatusDropdown
+                  isActive={user.is_active ?? true}
+                  pending={activateUser.isPending || deactivateUser.isPending}
+                  onActivate={() => activateUser.mutate(user.id)}
+                  onDeactivate={() => deactivateUser.mutate(user.id)}
+                />
               </td>
               <td>{lastActive(user.last_login)}</td>
             </tr>
