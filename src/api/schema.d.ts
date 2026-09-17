@@ -1446,6 +1446,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard/school/notifications/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Notifications — the bell, for a school
+         * @description The school-side twin of `notifications/`, and the same contract: **derived, not stored**, so reading them does not clear the count. It falls when the parcel is confirmed or the invoice is paid.
+         *
+         *     A separate endpoint rather than a wider audience on the warehouse one, for the same reason the two dashboards are separate screens: a school holds no stock, so 'SKUs below minimum' is somebody else's building.
+         *
+         *     The rows are the school's own, and every one of them is something it can act on — a parcel to confirm, an invoice to pay, a backorder to expect. **Confirming a delivery is the school's alone**, which is why hiding the bell from them left the only role with a personal to-do list with nowhere to read it.
+         */
+        get: operations["dashboard_school_notifications_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard/summary/": {
         parameters: {
             query?: never;
@@ -8354,6 +8378,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SchoolDashboard"];
+                };
+            };
+        };
+    };
+    dashboard_school_notifications_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notifications"];
                 };
             };
         };

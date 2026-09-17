@@ -100,6 +100,38 @@
   border-color: var(--warning);
 }
 
+/*
+ * A tile that answers its own figure.
+ *
+ * Only some do — see KpiCard's `to`. It has to *look* clickable, not merely
+ * behave that way, so it lifts on hover and keeps the focus ring an anchor
+ * would have. `color: inherit` because the tile's own type colours are
+ * already set by the tokens; without it the whole card turns link-blue.
+ */
+.kpi--link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.kpi--link:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.kpi--link:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi--link { transition: none; }
+  .kpi--link:hover { transform: none; }
+}
+
 .kpi__figure {
   display: flex;
   align-items: center;

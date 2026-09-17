@@ -32,7 +32,13 @@ import {
   LoadingScreen,
 } from '@/components'
 import { can } from '@/domain/access'
-import { formatQuantity, formatUGX, multiplyMoney, sumLineTotals } from '@/domain/money'
+import {
+  formatCompactUGX,
+  formatQuantity,
+  formatUGX,
+  multiplyMoney,
+  sumLineTotals,
+} from '@/domain/money'
 import { AppShell } from '@/features/shell/components/AppShell'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useSkuOptions } from '@/features/catalog/hooks/useSkuOptions'
@@ -128,8 +134,13 @@ export function KitDetailScreen() {
           />
           <KpiCard
             label="Total kit price"
+            /* Compact on a tile, like every other headline figure. The
+               exact price is on the component table below, which is what a
+               school is invoiced from. */
             value={
-              kit.data.current_price ? formatUGX(kit.data.current_price) : 'Cannot be priced'
+              kit.data.current_price
+                ? formatCompactUGX(kit.data.current_price)
+                : 'Cannot be priced'
             }
             caption="The sum of its components at today's prices"
             icon={Coins}

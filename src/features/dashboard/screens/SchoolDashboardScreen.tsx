@@ -24,7 +24,7 @@
 import { Link } from 'react-router-dom'
 import { AlertTriangle, CheckCircle2, Clock, PackageCheck, Wallet } from 'lucide-react'
 import { LoadingScreen, Panel } from '@/components'
-import { formatUGX } from '@/domain/money'
+import { formatCompactUGX } from '@/domain/money'
 import { AppShell } from '@/features/shell/components/AppShell'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { KpiCard } from '../components/KpiCard'
@@ -79,7 +79,13 @@ export function SchoolDashboardScreen() {
         />
         <KpiCard
           label="Amount Outstanding"
-          value={formatUGX(data.amount_outstanding)}
+          /* Compact, like every other figure on a tile — the warehouse
+             dashboard's Inventory Value already reads "UGX 48.2M". A tile is
+             a fixed-width box read at a glance, and "UGX 1,240,000" either
+             overflows it or shrinks the rest of the row to fit. The exact
+             figure belongs where somebody pays against it: the order table
+             on the school's detail screen, which keeps `formatUGX`. */
+          value={formatCompactUGX(data.amount_outstanding)}
           caption="Value of unpaid invoices"
           icon={Wallet}
         />
@@ -89,12 +95,19 @@ export function SchoolDashboardScreen() {
           caption="Paid and being prepared"
           icon={Clock}
         />
+        {/*
+          Clickable, unlike its neighbours: this is the school's own to-do
+          list, not a figure it merely reads. The other tiles report what the
+          warehouse is doing, and there is nothing for a school to act on in
+          them.
+        */}
         <KpiCard
           label="To Confirm"
           value={figure(orders.awaiting_confirmation)}
           caption="Shipped, not yet received"
           icon={PackageCheck}
           tone={orders.awaiting_confirmation > 0 ? 'alert' : 'default'}
+          to={orders.awaiting_confirmation > 0 ? '/orders' : undefined}
         />
         <KpiCard
           label="Completed"

@@ -178,6 +178,18 @@ dialog {
 /* The chevron follows its heading rather than shouting on its own. */
 .sidebar__group-label svg { color: inherit; opacity: 0.8; }
 
+/*
+ * A promoted single-item group — see Sidebar.tsx.
+ *
+ * It sits where a section heading would, so it takes that heading's vertical
+ * rhythm rather than a nested item's: no extra indent, and the same breathing
+ * room above and below that `.sidebar__group` gives its neighbours. Otherwise
+ * a flattened link reads as if it had fallen out of the section above it.
+ */
+.sidebar__link--solo {
+  margin-block: var(--space-1);
+}
+
 .sidebar__link {
   display: flex;
   align-items: center;
