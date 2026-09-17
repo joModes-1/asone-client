@@ -110,6 +110,13 @@ export function LowStockAlertsPanel({ alerts, loading }: LowStockAlertsPanelProp
           <Badge tone="error">{alerts.length} Critical</Badge>
         ) : undefined
       }
+      /* Inventory, where Low stock only narrows to exactly these rows. The
+         warehouse is already selected — the console set it on the way in. */
+      viewAll={
+        !loading && alerts.length > ROWS_SHOWN
+          ? { to: paths.inventory, total: alerts.length, noun: 'low stock SKUs' }
+          : undefined
+      }
     >
       {loading ? (
         <SkeletonRows rows={3} />
@@ -134,9 +141,6 @@ export function LowStockAlertsPanel({ alerts, loading }: LowStockAlertsPanelProp
         ))
       )}
 
-      {!loading && alerts.length > shown.length && (
-        <p className="panel__clear">+{alerts.length - shown.length} more below floor</p>
-      )}
     </Panel>
   )
 }
@@ -194,7 +198,18 @@ export function DispatchLogPanel({ shipments, total, loading }: DispatchLogPanel
   const shown = shipments.slice(0, ROWS_SHOWN)
 
   return (
-    <Panel title="Recent Dispatch Logs" busy={loading}>
+    <Panel
+      title="Recent Dispatch Logs"
+      busy={loading}
+      /* Despatched shipments are their own screen — `/shipments` lands on the
+         picking backlog, and the history behind it is where these rows live
+         in full. */
+      viewAll={
+        !loading && total > ROWS_SHOWN
+          ? { to: '/shipments/history', total, noun: 'dispatches' }
+          : undefined
+      }
+    >
       {loading ? (
         <SkeletonRows rows={3} />
       ) : shipments.length === 0 ? (
@@ -227,9 +242,6 @@ export function DispatchLogPanel({ shipments, total, loading }: DispatchLogPanel
         ))
       )}
 
-      {!loading && total > shown.length && (
-        <p className="panel__clear">+{total - shown.length} more dispatched</p>
-      )}
     </Panel>
   )
 }

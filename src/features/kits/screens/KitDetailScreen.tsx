@@ -37,6 +37,8 @@ import { AppShell } from '@/features/shell/components/AppShell'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useSkuOptions } from '@/features/catalog/hooks/useSkuOptions'
 import { useKit, useKitComponents, useUpdateKit } from '../hooks/useKits'
+import { Coins, GraduationCap } from 'lucide-react'
+import { KpiCard } from '@/features/dashboard/components/KpiCard'
 
 export function KitDetailScreen() {
   const { kitId } = useParams()
@@ -112,22 +114,28 @@ export function KitDetailScreen() {
           </p>
         </div>
 
-        <dl className="kit-hero__facts">
-          <div>
-            <dt>School level</dt>
-            <dd>{kit.data.school_level_display}</dd>
-          </div>
-          <div>
-            <dt>Total kit price</dt>
-            <dd className="t-numeric kit-hero__price">
-              {kit.data.current_price ? (
-                formatUGX(kit.data.current_price)
-              ) : (
-                <span className="kit-card__unpriced">Cannot be priced</span>
-              )}
-            </dd>
-          </div>
-        </dl>
+        {/*
+          The dashboard's `KpiCard`, like every other figure in the app. This
+          was a `<dl>` of its own with its own type scale, so the two facts
+          about a kit looked unlike the facts on every other screen.
+        */}
+        <div className="kpi-row kit-hero__figures">
+          <KpiCard
+            label="School level"
+            value={kit.data.school_level_display}
+            caption="Which price list it appears on"
+            icon={GraduationCap}
+          />
+          <KpiCard
+            label="Total kit price"
+            value={
+              kit.data.current_price ? formatUGX(kit.data.current_price) : 'Cannot be priced'
+            }
+            caption="The sum of its components at today's prices"
+            icon={Coins}
+            tone={kit.data.current_price ? 'default' : 'alert'}
+          />
+        </div>
       </section>
 
       {/*

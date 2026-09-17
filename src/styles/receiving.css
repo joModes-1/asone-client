@@ -202,7 +202,29 @@
  * Six columns including two inputs, so the table gets a floor and scrolls
  * inside `.table-scroll` rather than crushing the count field to nothing.
  */
-.validation { min-width: 720px; }
+.validation {
+  /* Six columns became seven with the Reason box, and that box needs room to
+     hold a sentence rather than three words at a time. Wider than the panel
+     on purpose — it slides, like every other wide table here. */
+  min-width: 940px;
+}
+
+/*
+ * The reason box, on differing lines only.
+ *
+ * Full width of its column rather than `.input--count`'s fixed 76px: a count
+ * is four digits and a reason is a sentence, so the two should not be the
+ * same shape.
+ */
+.validation__reason {
+  width: 100%;
+  min-width: 200px;
+  padding: var(--space-1) var(--space-2);
+}
+
+/* The matched line's stand-in. Muted, so it reads as "nothing to say" rather
+   than as a field somebody forgot. */
+.validation__no-reason { color: var(--text-muted); }
 
 /*
  * A description column that gives way. The garment names run long — "Primary

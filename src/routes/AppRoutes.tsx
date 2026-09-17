@@ -30,7 +30,9 @@ import { SignInScreen } from '@/features/auth/screens/SignInScreen'
 import { WelcomeScreen } from '@/features/auth/screens/WelcomeScreen'
 import { HomeScreen } from '@/features/dashboard/screens/HomeScreen'
 import { ReportsIndexScreen } from '@/features/reports/screens/ReportsIndexScreen'
+import { PriceListScreen } from '@/features/reports/screens/PriceListScreen'
 import { StockReportScreen } from '@/features/reports/screens/StockReportScreen'
+import { PlaceOrderScreen } from '@/features/orders/screens/PlaceOrderScreen'
 import { OrderDetailScreen } from '@/features/orders/screens/OrderDetailScreen'
 import { OrdersListScreen } from '@/features/orders/screens/OrdersListScreen'
 import { UsersRolesScreen } from '@/features/users/screens/UsersRolesScreen'
@@ -57,6 +59,7 @@ import {
   canReadSchoolOrders,
 } from '@/domain/access'
 import { InventoryScreen } from '@/features/inventory/screens/InventoryScreen'
+import { StockHistoryScreen } from '@/features/inventory/screens/StockHistoryScreen'
 import { SchoolDetailScreen } from '@/features/catalog/screens/SchoolDetailScreen'
 import { SchoolsScreen } from '@/features/catalog/screens/SchoolsScreen'
 import { WarehouseDetailScreen } from '@/features/catalog/screens/WarehouseDetailScreen'
@@ -79,6 +82,7 @@ const SCREENS: Record<string, ComponentType> = {
   '/reports': ReportsIndexScreen,
   '/orders': OrdersListScreen,
   '/inventory': InventoryScreen,
+  '/stock-history': StockHistoryScreen,
   '/schools': SchoolsScreen,
   '/warehouses': WarehousesScreen,
   '/tailoring-centers': TailoringCentersScreen,
@@ -121,6 +125,24 @@ export function AppRoutes() {
             one. They are listed before the generated routes so a more
             specific path is matched first.
           */}
+          {/*
+            Before the :orderId route, or "new" is parsed as an order id.
+
+            Gated on `school_orders`, which is narrower than the list it is
+            reached from: the leads and Finance may *read* every order, but
+            AsOne's matrix leaves School Orders Entry to school staff alone.
+          */}
+          <Route
+            path="/orders/new"
+            element={
+              <RequireAuth>
+                <RequireAccess requires="school_orders">
+                  <PlaceOrderScreen />
+                </RequireAccess>
+              </RequireAuth>
+            }
+          />
+
           <Route
             path="/orders/:orderId"
             element={
@@ -132,7 +154,6 @@ export function AppRoutes() {
             }
           />
 
-          {/* Before the :orderId route, or "new" is parsed as an order id. */}
           <Route
             path="/shipments/history"
             element={
@@ -218,7 +239,7 @@ export function AppRoutes() {
           />
 
           <Route
-            path="/adjustments/transfers/new"
+            path="/transfers/new"
             element={
               <RequireAuth>
                 <RequireAccess requires={canMoveStockBetweenWarehouses}>
@@ -229,7 +250,7 @@ export function AppRoutes() {
           />
 
           <Route
-            path="/adjustments/transfers"
+            path="/transfers"
             element={
               <RequireAuth>
                 <RequireAccess requires={canMoveStockBetweenWarehouses}>
@@ -278,6 +299,23 @@ export function AppRoutes() {
               <RequireAuth>
                 <RequireAccess requires={null}>
                   <StockReportScreen />
+                </RequireAccess>
+              </RequireAuth>
+            }
+          />
+
+          {/*
+            Pricing's own report. Guarded on `financial_reports`, the column
+            that opens the Reports destination and the Pricing category
+            within it — not on `table_updates`, which is who may *set* a
+            price rather than who may read the list.
+          */}
+          <Route
+            path="/reports/price-list"
+            element={
+              <RequireAuth>
+                <RequireAccess requires="financial_reports">
+                  <PriceListScreen />
                 </RequireAccess>
               </RequireAuth>
             }

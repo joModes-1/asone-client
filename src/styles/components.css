@@ -1220,7 +1220,7 @@ button.page-dots__dot {
 .snackbar__message {
   margin: 0;
   font-size: var(--text-body);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   color: var(--text-primary);
 }
 
@@ -1400,7 +1400,7 @@ button.page-dots__dot {
   border-radius: var(--radius-lg);
   background: var(--surface);
   color: var(--text-primary);
-  box-shadow: 0 24px 48px rgba(33, 35, 43, 0.24);
+  box-shadow: var(--shadow-modal);
 
   /* Grid so the body scrolls between a pinned head and foot, rather than
      the card growing past the viewport. */
@@ -1412,6 +1412,17 @@ button.page-dots__dot {
 .modal--md { width: min(100% - 2 * var(--space-5), 560px); }
 .modal--lg { width: min(100% - 2 * var(--space-5), 880px); }
 
+/*
+ * The help dialogue, a little wider than a form of the same size.
+ *
+ * Every other modal is a stack of fields, where a narrow column keeps a
+ * label next to its input. This one is prose, and prose read at a form's
+ * width breaks eight-word sentences over three lines. Not `--lg`: at 880px
+ * the measure goes the other way and the eye loses the start of the next
+ * line.
+ */
+.modal--help { width: min(100% - 2 * var(--space-5), 680px); }
+
 .modal__head {
   display: flex;
   align-items: flex-start;
@@ -1421,10 +1432,15 @@ button.page-dots__dot {
   border-bottom: 1px solid var(--table-rule);
 }
 
+/* Green, like `.page-head__title`. Every heading that names what you are
+   looking at is the brand colour in this app; the dialogue title was the one
+   that was not, which is why Create New SKU read as a different family of
+   screen from the page behind it. */
 .modal__title {
   margin: 0;
   font-size: var(--text-h3);
-  color: var(--text-primary);
+  font-weight: var(--weight-bold);
+  color: var(--accent);
 }
 
 .modal__subtitle {
@@ -1563,3 +1579,72 @@ button.page-dots__dot {
   flex-direction: column;
   gap: var(--space-4);
 }
+
+/* ---------------------------------------------------------------------------
+ * Split button — a primary action with its rarer siblings behind a caret
+ *
+ * Four buttons across a page head is too many, but folding them all into one
+ * menu buries the action people came for. The common one stays a single
+ * click; the occasional ones sit one click deeper.
+ * ------------------------------------------------------------------------ */
+
+.split {
+  position: relative;
+  display: inline-flex;
+}
+
+/* The two halves read as one control: the seam is a divider, not a gap, so
+   the pair keeps the silhouette of a single button. */
+.split__main {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.split__caret {
+  padding-inline: var(--space-2);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 1px solid color-mix(in srgb, var(--text-on-accent) 30%, transparent);
+}
+
+.split__caret.btn--secondary { border-left-color: var(--border); }
+
+.split__menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 40;
+  min-width: 230px;
+  margin: 0;
+  padding: var(--space-2);
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.split__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--text-caption);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.split__item:hover:not(:disabled) { background: var(--surface-sunken); }
+
+.split__item:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.split__hint { color: var(--text-muted); }

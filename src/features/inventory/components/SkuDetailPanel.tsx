@@ -28,13 +28,23 @@ import { formatCompactUGX, formatQuantity, formatSignedQuantity } from '@/domain
 import { useSkuMovements } from '../hooks/useSkuMovements'
 import { useSkuStockLevels } from '../hooks/useSkuStockLevels'
 import type { InventoryRow } from '../hooks/useInventoryRows'
+import { Link } from 'react-router-dom'
+import { can } from '@/domain/access'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 
 interface SkuDetailPanelProps {
   row: InventoryRow
   onClose: () => void
+  onEdit: () => void
 }
 
-export function SkuDetailPanel({ row, onClose }: SkuDetailPanelProps) {
+export function SkuDetailPanel({ row, onClose, onEdit }: SkuDetailPanelProps) {
+  const { user } = useAuth()
+  // Two different matrix columns: master data is the leads', posting an
+  // adjustment is Finance's.
+  const canEdit = can(user, 'table_updates')
+  const canAdjust = can(user, 'inventory_adjustments')
+
   const { stockLevels, isLoading: stockLoading } = useSkuStockLevels(row.skuId)
   const { movements, isLoading: movementsLoading } = useSkuMovements(row.skuId)
 
@@ -187,24 +197,38 @@ export function SkuDetailPanel({ row, onClose }: SkuDetailPanelProps) {
         </div>
       )}
 
-      <div className="sku-panel__footer">
-        <button
-          type="button"
-          className="sku-panel__btn-edit"
-          disabled
-          title="Editing a SKU isn't built yet."
-        >
-          Edit SKU
-        </button>
-        <button
-          type="button"
-          className="sku-panel__btn-adjust"
-          disabled
-          title="Use Inv. Adjustments to change stock for now."
-        >
-          Adjust Inventory
-        </button>
-      </div>
+      {/*
+        A control a role may not use is not shown to them at all.
+
+        These were rendered greyed out with a tooltip saying whose job it
+        was — but the sidebar does not offer a lead Inv. Adjustments and
+        then refuse it, it simply does not list it. A disabled button is
+        still a thing to try, fail at, and wonder about; an absent one says
+        the same thing without the dead end.
+
+        `canEdit` and `canAdjust` are different columns of the matrix, so a
+        lead sees Edit and Finance sees Adjust. Where a role has neither,
+        the footer is not drawn.
+      */}
+      {(canEdit || canAdjust) && (
+        <div className="sku-panel__footer">
+          {canEdit && (
+            <button type="button" className="sku-panel__btn-edit" onClick={onEdit}>
+              Edit SKU
+            </button>
+          )}
+
+          {canAdjust && (
+            <Link
+              className="sku-panel__btn-adjust"
+              to={`/adjustments/new?sku=${row.skuId}&warehouse=${row.warehouseId}`}
+            >
+              Adjust Inventory
+            </Link>
+          )}
+        </div>
+      )}
+
     </aside>
   )
 }

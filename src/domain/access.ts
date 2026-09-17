@@ -206,6 +206,27 @@ export function canReadPackingList(user: CurrentUser | null): boolean {
 }
 
 /**
+ * Who has a warehouse dashboard — and so a notification bell.
+ *
+ * The split is on **scope, not role name**, the same line
+ * {@link seesWarehouseDashboard}'s caller `HomeScreen` already drew: a role
+ * scoped to schools gets the school screen, everybody else the warehouse
+ * one. Mirrors `dashboard/views.py::CanSeeWarehouseDashboard`, which refuses
+ * School Staff outright.
+ *
+ * This decides the bell as well as the screen because the bell reads
+ * `/dashboard/notifications/`, which sits behind that same permission. A
+ * school clerk was shown a bell that answered 403 on every poll and rendered
+ * "none unread" — a control that reported all clear while it was in fact
+ * forbidden. There is no school-side alert feed to point it at: the school
+ * dashboard returns counts, not graded conditions. If AsOne wants one, it is
+ * a new endpoint, and this predicate is where the bell would learn about it.
+ */
+export function seesWarehouseDashboard(user: CurrentUser | null): boolean {
+  return scopeOf(user) !== 'assigned_schools'
+}
+
+/**
  * True while the account is held at the password gate.
  *
  * The backend answers 403 on almost everything in this state — only
@@ -326,6 +347,33 @@ export function canReadKits(user: CurrentUser | null): boolean {
   if (!user) return false
   return (
     user.role === 'SCHOOL_STAFF' ||
+    user.role === 'FINANCE' ||
+    user.role === 'PROGRAM_LEAD' ||
+    user.role === 'OPERATIONS_MANAGER'
+  )
+}
+
+/**
+ * Who may read the stock ledger — F48, the audit trail.
+ *
+ * Warehouse Staff and Finance, plus both leads. **Not School Staff**, which
+ * is the only interesting part: a school reads stock levels at the warehouse
+ * that serves it, but the ledger behind those levels is every movement at
+ * every site the reader may see, including other schools' picks and
+ * shipments. AsOne's matrix does not give them that, and the server does not
+ * either.
+ *
+ * Without this the Stock History entry was `requires: null` — visible to all
+ * five roles, and a guaranteed 403 for one of them. The same mistake the
+ * notification bell had, and the reason both are predicates now.
+ *
+ * Mirrors `inventory/views.py::StockMovementViewSet.read_roles` together with
+ * `MasterDataAccess`, which adds the two leads to whatever a viewset names.
+ */
+export function canReadStockHistory(user: CurrentUser | null): boolean {
+  if (!user) return false
+  return (
+    user.role === 'WAREHOUSE_STAFF' ||
     user.role === 'FINANCE' ||
     user.role === 'PROGRAM_LEAD' ||
     user.role === 'OPERATIONS_MANAGER'

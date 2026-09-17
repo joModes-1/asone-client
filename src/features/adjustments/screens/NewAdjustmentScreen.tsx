@@ -39,6 +39,7 @@
  */
 
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
@@ -85,8 +86,21 @@ export function NewAdjustmentScreen() {
   const navigate = useNavigate()
   const { warehouseId, siteLabel, canSwitch, options } = useWarehouseFilter()
 
+  /*
+   * Opened from a SKU's panel on the inventory screen, which passes the SKU
+   * and the warehouse it was looking at — so the form starts on the row the
+   * person was already reading rather than empty. Typing them again would be
+   * a chance to pick the wrong one.
+   *
+   * Read once, as the initial value: after that the form is the person's,
+   * and a stale URL should not pull a field back.
+   */
+  const [params] = useSearchParams()
+  const skuFromUrl = Number(params.get('sku')) || null
+  const warehouseFromUrl = Number(params.get('warehouse')) || null
+
   const [kind, setKind] = useState<AdjustmentKind>('CORRECTION')
-  const [skuId, setSkuId] = useState<number | null>(null)
+  const [skuId, setSkuId] = useState<number | null>(skuFromUrl)
   const [reasonId, setReasonId] = useState<number | null>(null)
   const [quantity, setQuantity] = useState('')
   const [notes, setNotes] = useState('')
@@ -106,7 +120,7 @@ export function NewAdjustmentScreen() {
     adjusted at — they pick one here, and the box is only locked once there
     is something to lock it to.
   */
-  const [chosenWarehouse, setChosenWarehouse] = useState<number | null>(null)
+  const [chosenWarehouse, setChosenWarehouse] = useState<number | null>(warehouseFromUrl)
   const warehouse = warehouseId ?? chosenWarehouse
 
   /* Only asked for on the Warehouse Transfer card — where stock is going. */
@@ -283,7 +297,7 @@ export function NewAdjustmentScreen() {
           ...(notes.trim() ? { notes: notes.trim() } : {}),
           lines: [{ sku: skuId, quantity: Math.round(typed) }],
         },
-        { onSuccess: () => navigate('/adjustments/transfers') },
+        { onSuccess: () => navigate('/transfers') },
       )
       return
     }
@@ -480,7 +494,7 @@ export function NewAdjustmentScreen() {
               </select>
               <p className="field__hint">
                 Moving several items in one go?{' '}
-                <Link to="/adjustments/transfers/new">Use the full transfer form</Link> — it
+                <Link to="/transfers/new">Use the full transfer form</Link> — it
                 takes as many SKUs as you need.
               </p>
             </div>

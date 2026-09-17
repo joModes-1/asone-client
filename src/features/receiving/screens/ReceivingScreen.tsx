@@ -29,7 +29,7 @@ import { useMemo, useState } from 'react'
 import { LoadingScreen } from '@/components'
 import { todayISO } from '@/domain/dates'
 import { AppShell } from '@/features/shell/components/AppShell'
-import { CompareStep, type CountsBySku } from '../components/CompareStep'
+import { CompareStep, type CountsBySku, type ReasonsBySku } from '../components/CompareStep'
 import { FinalManifest } from '../components/FinalManifest'
 import { SelectOrderStep } from '../components/SelectOrderStep'
 import { StepRail } from '../components/StepRail'
@@ -76,18 +76,34 @@ export function ReceivingScreen() {
    * — one render behind, and wiping keyed counts if the query refetched
    * mid-count. Tagging makes switching order reset them for free.
    */
-  const [draft, setDraft] = useState<{ orderId: number | null; counts: CountsBySku }>({
+  const [draft, setDraft] = useState<{
+    orderId: number | null
+    counts: CountsBySku
+    reasons: ReasonsBySku
+  }>({
     orderId: null,
     counts: {},
+    reasons: {},
   })
 
-  const counts: CountsBySku =
-    draft.orderId === orderId
-      ? draft.counts
-      : Object.fromEntries(expected.map((row) => [row.sku, row.outstanding]))
+  const forThisOrder = draft.orderId === orderId
+
+  const counts: CountsBySku = forThisOrder
+    ? draft.counts
+    : Object.fromEntries(expected.map((row) => [row.sku, row.outstanding]))
+
+  /* Empty, unlike counts: a reason is something somebody writes, so there is
+     nothing sensible to seed it with. Tagged with the order for the same
+     reason counts are — switching order must not carry a note about a
+     different delivery. */
+  const reasons: ReasonsBySku = forThisOrder ? draft.reasons : {}
 
   function setCount(sku: number, value: number) {
-    setDraft({ orderId, counts: { ...counts, [sku]: value } })
+    setDraft({ orderId, counts: { ...counts, [sku]: value }, reasons })
+  }
+
+  function setReason(sku: number, value: string) {
+    setDraft({ orderId, counts, reasons: { ...reasons, [sku]: value } })
   }
 
   const order = orders.data?.find((candidate) => candidate.id === orderId) ?? null
@@ -107,7 +123,7 @@ export function ReceivingScreen() {
     setPackingListNumber('')
     setCarrierName('')
     setNotes('')
-    setDraft({ orderId: null, counts: {} })
+    setDraft({ orderId: null, counts: {}, reasons: {} })
     setStep('order')
   }
 
@@ -125,11 +141,18 @@ export function ReceivingScreen() {
           // The server refuses a count of zero, and rightly: "none of this
           // SKU arrived" is the absence of a line, not a line of nothing.
           .filter((row) => (counts[row.sku] ?? 0) > 0)
-          .map((row) => ({
-            sku: row.sku,
-            quantity_received: counts[row.sku] ?? 0,
-            quantity_on_packing_list: row.outstanding,
-          })),
+          .map((row) => {
+            const reason = (reasons[row.sku] ?? '').trim()
+            return {
+              sku: row.sku,
+              quantity_received: counts[row.sku] ?? 0,
+              quantity_on_packing_list: row.outstanding,
+              /* Omitted rather than sent empty. The field is optional on the
+                 server and a line that matched has nothing to explain, so a
+                 blank string would only put an empty note on every row. */
+              ...(reason ? { discrepancy_note: reason } : {}),
+            }
+          }),
       },
       {
         onSuccess: (result) => {
@@ -195,6 +218,8 @@ export function ReceivingScreen() {
           warehouseName={order.warehouse_name}
           expected={expected}
           counts={counts}
+          reasons={reasons}
+          onReasonChange={setReason}
           onCountChange={setCount}
           notes={notes}
           onNotesChange={setNotes}

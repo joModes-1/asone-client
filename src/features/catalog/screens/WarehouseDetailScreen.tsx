@@ -24,6 +24,8 @@ import {
   PickingQueuePanel,
 } from '../components/WarehouseHubPanels'
 import { useWarehouseHub } from '../hooks/useWarehouseHub'
+import { Boxes, ClipboardList, Clock, Truck } from 'lucide-react'
+import { KpiCard } from '@/features/dashboard/components/KpiCard'
 
 /** A figure that has not arrived reads as a dash, not a zero — zero is a
  * real, meaningful answer here, same as the rest of the dashboard. */
@@ -72,35 +74,37 @@ export function WarehouseDetailScreen() {
         </p>
       </header>
 
-      <div className="hub-kpi-grid">
-        <div className="hub-kpi-card">
-          <span className="hub-kpi-card__label">Available Stock</span>
-          <span className="hub-kpi-card__value">
-            {figure(summary?.available_units, summaryLoading)}
-          </span>
-          <span className="hub-kpi-card__caption">Units in local bins</span>
-        </div>
-        <div className="hub-kpi-card">
-          <span className="hub-kpi-card__label">In Picking Queue</span>
-          <span className="hub-kpi-card__value">
-            {figure(summary?.units_awaiting_pick, summaryLoading)}
-          </span>
-          <span className="hub-kpi-card__caption">Pending packaging</span>
-        </div>
-        <div className="hub-kpi-card">
-          <span className="hub-kpi-card__label">Shipped Today</span>
-          <span className="hub-kpi-card__value">
-            {figure(summary?.units_shipped_today, summaryLoading)}
-          </span>
-          <span className="hub-kpi-card__caption">Left the warehouse today</span>
-        </div>
-        <div className="hub-kpi-card">
-          <span className="hub-kpi-card__label">Backorders</span>
-          <span className="hub-kpi-card__value">
-            {figure(summary?.outstanding_backorders, summaryLoading)}
-          </span>
-          <span className="hub-kpi-card__caption">Open or assigned, not yet shipped</span>
-        </div>
+      {/*
+        The dashboard's `KpiCard`, like every other set of figures in the
+        app. These were `hub-kpi-card` — label, then figure, then caption,
+        and no icon — a third tile shape for the same kind of fact.
+      */}
+      <div className="kpi-row">
+        <KpiCard
+          label="Available Stock"
+          value={figure(summary?.available_units, summaryLoading)}
+          caption="Units in local bins"
+          icon={Boxes}
+        />
+        <KpiCard
+          label="In Picking Queue"
+          value={figure(summary?.units_awaiting_pick, summaryLoading)}
+          caption="Pending packaging"
+          icon={ClipboardList}
+        />
+        <KpiCard
+          label="Shipped Today"
+          value={figure(summary?.units_shipped_today, summaryLoading)}
+          caption="Left the warehouse today"
+          icon={Truck}
+        />
+        <KpiCard
+          label="Backorders"
+          value={figure(summary?.outstanding_backorders, summaryLoading)}
+          caption="Open or assigned, not yet shipped"
+          icon={Clock}
+          tone={summary?.outstanding_backorders ? 'alert' : 'default'}
+        />
       </div>
 
       <div className="hub-grid-2x2">

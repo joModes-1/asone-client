@@ -110,7 +110,7 @@ export function AdjustmentsScreen() {
         ]}
         active="adjustments"
         onSelect={(key) => {
-          if (key === 'transfers') navigate('/adjustments/transfers')
+          if (key === 'transfers') navigate('/transfers')
         }}
         label="Adjustment views"
       />

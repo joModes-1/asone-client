@@ -7,7 +7,6 @@
  */
 
 export { Alert } from './Alert'
-export { AnimatedNumber } from './AnimatedNumber'
 export { Avatar } from './Avatar'
 export { Badge, type IdentityTone, type Tone } from './Badge'
 export { BrandMark } from './BrandMark'
@@ -24,6 +23,7 @@ export { pageWindow } from './pageWindow'
 export { Panel } from './Panel'
 export { PasswordField } from './PasswordField'
 export { Select } from './Select'
+export { SplitButton, type SplitButtonOption } from './SplitButton'
 export { Skeleton, SkeletonRows, SkeletonText } from './Skeleton'
 export { ServerUnreachable } from './ServerUnreachable'
 export { Spinner } from './Spinner'

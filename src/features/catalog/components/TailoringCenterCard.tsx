@@ -48,7 +48,7 @@ export function TailoringCenterCard({ center }: TailoringCenterCardProps) {
       <div className="tc-card__header">
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <h2 className="tc-card__title" style={{ margin: 0 }}>
+            <h2 className="tc-card__title">
               {center.name}
             </h2>
             <Badge tone={center.is_active ? 'success' : 'neutral'}>
@@ -69,13 +69,13 @@ export function TailoringCenterCard({ center }: TailoringCenterCardProps) {
         <div className="tc-card__chips">
           <div className="tc-card__chip">
             <span className="tc-card__chip-label">ACTIVE POS</span>
-            <span className="tc-card__chip-value tc-card__chip-value--blue">
+            <span className="tc-card__chip-value tc-card__chip-value--active">
               {isLoading ? '—' : activeOrders}
             </span>
           </div>
           <div className="tc-card__chip">
             <span className="tc-card__chip-label">AWAITING DELIVERY</span>
-            <span className="tc-card__chip-value tc-card__chip-value--blue">
+            <span className="tc-card__chip-value tc-card__chip-value--waiting">
               {isLoading ? '—' : awaitingDelivery}
             </span>
           </div>

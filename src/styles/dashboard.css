@@ -84,7 +84,11 @@
   gap: var(--space-3);
   padding: var(--space-4);
   background:
-    linear-gradient(0deg, rgba(94, 142, 142, 0.05), rgba(94, 142, 142, 0.05)),
+    linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--accent) 5%, transparent),
+      color-mix(in srgb, var(--accent) 5%, transparent)
+    ),
     var(--surface);
   border: 1px solid var(--accent);
   border-radius: var(--radius-lg);
@@ -120,7 +124,7 @@
 .kpi__caption {
   margin: 0;
   font-size: var(--text-caption);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   color: var(--text-primary);
 }
 
@@ -240,7 +244,7 @@
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   font-size: var(--text-caption);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -435,7 +439,7 @@
   color: var(--text-on-dark);
   font-family: var(--font-promo);
   font-size: var(--text-h2);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -444,7 +448,7 @@
   margin: 0;
   font-family: var(--font-promo);
   font-size: var(--text-caption);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 
 .promo__action {
@@ -456,7 +460,7 @@
   color: var(--text-on-dark);
   font-family: var(--font-promo);
   font-size: var(--text-caption);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   cursor: pointer;
   display: inline-flex;
   align-items: center;

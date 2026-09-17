@@ -191,7 +191,7 @@ dialog {
   transition: background-color 120ms ease;
 }
 
-.sidebar__link:hover { background: rgba(255, 255, 255, 0.1); }
+.sidebar__link:hover { background: color-mix(in srgb, var(--text-on-dark) 10%, transparent); }
 
 .sidebar__link--active { background: var(--tone-slate); }
 
@@ -295,7 +295,7 @@ dialog {
   border-radius: var(--radius-sm);
   color: var(--accent);
   font-size: var(--text-caption);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   white-space: nowrap;
 }
 
@@ -541,7 +541,7 @@ dialog {
 .page-head__eyebrow {
   margin: 0;
   font-size: var(--text-overline);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -577,6 +577,16 @@ dialog {
   margin: 0;
   font-size: var(--text-caption);
   color: var(--text-primary);
+}
+
+/* More than one control opposite a page title. A single button needs no
+   wrapper; this is for the screens that have two. Wraps, so a narrow window
+   stacks them rather than pushing the title out of the head. */
+.page-head__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 /* ---------------------------------------------------------------------------
@@ -633,6 +643,12 @@ dialog {
   margin: 0;
   font-size: var(--text-caption);
   color: var(--text-secondary);
+}
+
+/* A poll that failed is not an all-clear, so it does not get the all-clear's
+   quiet grey. */
+.bell__empty--error {
+  color: var(--error);
 }
 
 .bell__list {

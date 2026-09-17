@@ -7,7 +7,7 @@
  */
 
 import { get } from './http'
-import type { Page, ReorderAlert, StockLevel, StockMovement } from './types'
+import type { MovementType, Page, ReorderAlert, StockLevel, StockMovement } from './types'
 
 /**
  * A type alias, not an interface: TypeScript gives object type aliases an
@@ -33,12 +33,22 @@ export function reorderAlerts(params?: WarehouseScoped) {
   return get<ReorderAlert[]>('/inventory/reorder-alerts/', params ?? undefined)
 }
 
-/** The append-only ledger, newest first. */
+/**
+ * The append-only ledger, newest first — F48, the audit trail.
+ *
+ * Every filter here is applied by the server, which matters more on this
+ * endpoint than on any other: a history narrowed on the client would be a
+ * page of the ledger pretending to be the ledger, and the whole point of an
+ * audit trail is that what it shows is what there is.
+ */
 export function movements(params?: {
   warehouse?: number | null
   sku?: number
-  movement_type?: string
+  movement_type?: MovementType
   document_number?: string
+  /** Inclusive `YYYY-MM-DD` bounds on the date it happened. Either may stand alone. */
+  date_from?: string
+  date_to?: string
   page?: number
   page_size?: number
 }) {

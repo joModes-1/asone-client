@@ -122,9 +122,10 @@ export const REPORT_CATEGORIES: readonly ReportCategory[] = [
     title: 'Pricing Reports',
     icon: 'pricing',
     requires: 'financial_reports',
+    path: '/reports/price-list',
     reports: [
       { title: 'Unit Production Cost Index', endpoint: '/procurement/reports/group-orders-costed/' },
-      { title: 'School Direct Price Sheets', endpoint: '/catalog/price-lists/' },
+      { title: 'School Direct Price Sheets', popular: true, endpoint: '/catalog/price-lists/' },
       { title: 'Regional Subsidy Ledger', note: 'No subsidies in the model.' },
       {
         title: 'Custom Sizing Premium Invoices',

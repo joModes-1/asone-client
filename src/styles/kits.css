@@ -292,3 +292,9 @@
 .compose--even .compose__lines .input--count {
   max-width: 72px;
 }
+
+/* The hero's figures sit beside the title rather than filling the row, so
+   the kit's name keeps the space it needs. */
+.kit-hero__figures {
+  flex: 0 1 460px;
+}

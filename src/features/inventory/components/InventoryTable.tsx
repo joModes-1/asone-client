@@ -12,7 +12,7 @@
  */
 
 import { Boxes } from 'lucide-react'
-import { EmptyState, Pagination } from '@/components'
+import { Badge, EmptyState, Pagination } from '@/components'
 import { formatCompactUGX, formatQuantity } from '@/domain/money'
 import type { InventoryRow } from '../hooks/useInventoryRows'
 
@@ -67,7 +67,13 @@ export function InventoryTable({
   return (
     <>
       <div className="inventory-table-card">
-        <table className={`inventory-table ${isCompact ? 'inventory-table--compact' : ''}`}>
+        {/* `ledger` carries the typography every other table in the app
+            uses; `inventory-table` adds only what is this table's own. */}
+        <table
+          className={`ledger ledger--clickable inventory-table${
+            isCompact ? ' inventory-table--compact' : ''
+          }`}
+        >
           <thead>
             <tr>
               <th scope="col">SKU</th>
@@ -94,6 +100,7 @@ export function InventoryTable({
                   <th scope="col" className="inventory-table__th-num">
                     Value
                   </th>
+                  <th scope="col">Status</th>
                 </>
               )}
             </tr>
@@ -111,15 +118,26 @@ export function InventoryTable({
                   }`}
                   onClick={() => onSelectRow(row)}
                 >
+                  {/*
+                    `ledger__link`, the same as an Order ID in the orders
+                    table — a row here opens the SKU beside the table, so the
+                    cell that names it should carry the same affordance. Not
+                    an anchor, because the panel is not a route and there is
+                    no URL to hand a middle-click.
+                  */}
                   <td
-                    className={`inventory-table__td-code ${
-                      isSelected ? 'inventory-table__td-code--selected' : ''
+                    className={`ledger__link inventory-table__td-code${
+                      isSelected ? ' inventory-table__td-code--selected' : ''
                     }`}
                   >
                     {row.skuNumber}
                   </td>
-                  <td className="inventory-table__td-name">{row.garmentName}</td>
-                  <td className="inventory-table__td-muted">{row.description}</td>
+                  <td className="inventory-table__td-name ledger__wrap" title={row.garmentName}>
+                    {row.garmentName}
+                  </td>
+                  <td className="inventory-table__td-muted ledger__wrap" title={row.description}>
+                    {row.description}
+                  </td>
                   <td>{row.level}</td>
                   <td>{row.sizeName}</td>
                   <td className="inventory-table__td-muted">{row.colour || '—'}</td>
@@ -137,6 +155,11 @@ export function InventoryTable({
                         {formatQuantity(row.minimumQuantity)}
                       </td>
                       <td className="inventory-table__td-num">{formatCompactUGX(row.value)}</td>
+                      <td>
+                        <Badge tone={row.isActive ? 'success' : 'error'}>
+                          {row.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </td>
                     </>
                   )}
                 </tr>

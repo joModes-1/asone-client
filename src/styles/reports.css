@@ -300,10 +300,27 @@
   text-align: left;
 }
 
+/*
+ * One line per cell, everywhere.
+ *
+ * A value wrapped over two or three lines makes every row in the table that
+ * tall, loses the shape of the column, and is harder to recognise than the
+ * same value cut short — you lose the start of the next row's name while
+ * reading the end of this one's.
+ *
+ * `max-width` is what makes the ellipsis possible at all: a table cell is
+ * sized by its content, so without a ceiling there is nothing to overflow.
+ * Cells that must never be cut — a number, a date, a badge — are narrower
+ * than this anyway and never reach it.
+ */
 .ledger td {
+  max-width: 260px;
   padding: var(--space-3);
   border-bottom: 1px solid var(--table-rule);
   color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ledger tbody tr:hover { background: var(--surface); }
@@ -322,6 +339,7 @@
 /* A date or document reference that must never break across two lines. */
 .ledger__nowrap { white-space: nowrap; }
 
+
 .ledger__code {
   font-family: var(--font-mono);
   font-size: var(--text-small);
@@ -329,6 +347,40 @@
 }
 
 .ledger__total { font-weight: var(--weight-bold); }
+
+/* A supporting column — a description beside the name it describes, or a
+   warehouse beside the SKU held in it. Quieter, so the row has one subject. */
+.ledger__muted { color: var(--text-secondary); }
+
+/* A quantity at or below its minimum. The one number on a stock row that is
+   asking for something to be done about it. */
+.ledger__num--low {
+  color: var(--warning);
+  font-weight: var(--weight-bold);
+}
+
+/* The row whose detail panel is open beside the table. Marked on the left
+   edge rather than by a fill, so it reads as "this one" without competing
+   with the hover and focus states already on a clickable row. */
+.ledger__row--selected > td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.ledger__row--selected { background: var(--surface-sunken); }
+
+/* Narrower, for a table sharing its width with a detail panel. */
+.ledger--compact { font-size: var(--text-caption); }
+
+/*
+ * A table with more columns than the screen has room for.
+ *
+ * `.ledger` is `width: 100%`, which makes a wide table *compress* — every
+ * cell wraps to two or three lines and the row grows tall enough to lose
+ * its shape. A floor turns that back into what `.table-scroll` is for: the
+ * columns keep a readable width and the table scrolls sideways inside its
+ * own card, which is the system's rule for a table too wide to fit.
+ */
+.ledger--wide { min-width: 1080px; }
 
 /* ---------------------------------------------------------------------------
  * Print

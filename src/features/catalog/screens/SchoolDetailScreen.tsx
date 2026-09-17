@@ -41,6 +41,9 @@ import {
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge, EmptyState, LoadingScreen, Pagination } from '@/components'
+import { formatDay } from '@/domain/dates'
+import { formatQuantity } from '@/domain/money'
+import { KpiCard } from '@/features/dashboard/components/KpiCard'
 import { formatUGX } from '@/domain/money'
 import { paymentLabel, paymentTone, schoolOrderTone } from '@/domain/status'
 import { AppShell } from '@/features/shell/components/AppShell'
@@ -54,18 +57,28 @@ import type { SchoolOrder } from '@/api/types'
 const TABS = ['Orders', 'Students', 'Shipments', 'Backorders'] as const
 type SchoolTab = (typeof TABS)[number]
 
+/*
+ * What each tab will show, said to the person looking at it.
+ *
+ * These render straight into an `EmptyState` on screen. They used to name
+ * API paths, talk about "this role", and say things like "the KPI
+ * definitions aren't settled" and "a good candidate to build first" — notes
+ * from one developer to another, shown to a school clerk. What somebody
+ * wants from an empty tab is what belongs there, why it is empty, and where
+ * to look meanwhile.
+ */
 const NON_ORDERS_TAB_GAPS: Record<Exclude<SchoolTab, 'Orders'>, { title: string; body: string }> = {
   Students: {
-    title: 'Students — not a concept in the system yet',
-    body: 'AsOne has no student roster. A student is a free-text name on an order, not a database record — showing a list here means deciding whether students become a real entity first.',
+    title: 'No student list',
+    body: 'A student is a name written on an order rather than a record the system keeps, so there is no roster to show. Every order on the Orders tab names the student it is for.',
   },
   Shipments: {
-    title: 'Shipments — not wired yet, but the data is reachable',
-    body: '/orders/reports/part-processed/ (picked, awaiting despatch) is actually readable by this role already. Held back only because it has no school filter yet and the KPI definitions aren’t settled — a good candidate to build first.',
+    title: 'Shipments are not shown here yet',
+    body: 'What has been picked for this school and is waiting for a van is on the Shipping screen. This tab will bring it together per school.',
   },
   Backorders: {
-    title: 'Backorders — not wired yet, but the data is reachable',
-    body: '/orders/reports/backorders/ is readable by this role already, and it is the widest-audience report in the system. Held back for the same reason as Shipments: no school filter yet, and the figures haven’t been agreed.',
+    title: 'Backorders are not shown here yet',
+    body: 'Orders this school is waiting on stock for are on the Backorders screen. This tab will bring them together per school.',
   },
 }
 
@@ -154,38 +167,46 @@ export function SchoolDetailScreen() {
         </div>
       </div>
 
-      <div className="school-kpi-grid">
-        <div className="school-kpi-card">
-          <div className="school-kpi-card__value">—</div>
-          <div className="school-kpi-card__footer">
-            <Users size={16} aria-hidden />
-            <span>Total Students</span>
-          </div>
-        </div>
+      {/*
+        The dashboard's own `KpiCard` and `.kpi-row`, not a second tile that
+        looked nearly like it. These were `school-kpi-card` — figure on top,
+        icon and label beneath — while the dashboard pairs the icon with the
+        figure and puts the category last. Two tile shapes for the same kind
+        of fact.
 
-        <div className="school-kpi-card">
-          <div className="school-kpi-card__value">{school.active_orders_count}</div>
-          <div className="school-kpi-card__footer">
-            <Package size={16} aria-hidden />
-            <span>Active Orders</span>
-          </div>
-        </div>
-
-        <div className="school-kpi-card">
-          <div className="school-kpi-card__value">—</div>
-          <div className="school-kpi-card__footer">
-            <TrendingUp size={16} aria-hidden />
-            <span>Total Revenue</span>
-          </div>
-        </div>
-
-        <div className="school-kpi-card">
-          <div className="school-kpi-card__value">—</div>
-          <div className="school-kpi-card__footer">
-            <Truck size={16} aria-hidden />
-            <span>Pending Shipments</span>
-          </div>
-        </div>
+        Every figure arrives as a formatted string, which is what `KpiCard`
+        takes: a raw number here would print 1234 where the rest of the app
+        prints 1,234.
+      */}
+      <div className="kpi-row">
+        <KpiCard
+          label="Total Students"
+          value={
+            school.student_count === null || school.student_count === undefined
+              ? '—'
+              : formatQuantity(school.student_count)
+          }
+          caption="Enrolled, as the school reports it"
+          icon={Users}
+        />
+        <KpiCard
+          label="Active Orders"
+          value={formatQuantity(school.active_orders_count)}
+          caption="Placed and not yet delivered"
+          icon={Package}
+        />
+        <KpiCard
+          label="Total Revenue"
+          value="—"
+          caption="Not totalled per school yet"
+          icon={TrendingUp}
+        />
+        <KpiCard
+          label="Pending Shipments"
+          value="—"
+          caption="Not counted per school yet"
+          icon={Truck}
+        />
       </div>
 
       <div className="school-tabs-container">
@@ -297,20 +318,27 @@ function SchoolOrdersPanel({
   const pageCount = Math.max(Math.ceil(totalCount / pageSize), 1)
 
   return (
-    <div className="school-orders-table-card">
-      <table className="school-orders-table">
+    /*
+     * `.table-card` and `.ledger`, like every other table in the app. This
+     * arrived as its own `school-orders-table` with its own cell classes and
+     * inline `textAlign` styles, so the same kind of table — an order list —
+     * looked different here from Orders, Inventory and everywhere else.
+     */
+    <div className="table-card">
+      <div className="table-scroll">
+      <table className="ledger">
         <thead>
           <tr>
             <th scope="col">Order #</th>
             <th scope="col">Student</th>
             <th scope="col">Uniform Items</th>
-            <th scope="col" style={{ textAlign: 'right' }}>
-              Total / Payment
+            <th scope="col" className="ledger__nowrap">
+              Total (UGX)
             </th>
-            <th scope="col" style={{ textAlign: 'center' }}>
-              Status
+            <th scope="col" className="ledger__nowrap">
+              Order Status
             </th>
-            <th scope="col" style={{ textAlign: 'right' }}>
+            <th scope="col" className="ledger__nowrap">
               Order Date
             </th>
           </tr>
@@ -318,25 +346,33 @@ function SchoolOrdersPanel({
         <tbody>
           {orders.map((order) => (
             <tr key={order.id}>
-              <td className="school-orders-table__td-num">{order.number}</td>
-              <td className="school-orders-table__td-student">{order.student_name}</td>
-              <td className="school-orders-table__td-items">
-                {order.lines.map((line) => `${line.sku_description} (${line.quantity})`).join(', ')}
+              <td className="ledger__link">{order.number}</td>
+              <td className="ledger__strong">{order.student_name}</td>
+              <td
+                className="ledger__wrap"
+                title={order.lines
+                  .map((line) => `${line.sku_description} (${line.quantity})`)
+                  .join(', ')}
+              >
+                {order.lines
+                  .map((line) => `${line.sku_description} (${line.quantity})`)
+                  .join(', ')}
               </td>
-              <td className="school-orders-table__td-payment">
-                <div className="school-orders-table__td-payment-wrap">
-                  <span className="school-orders-table__amount">{formatUGX(order.total)}</span>
+              <td>
+                <span className="order-total">
+                  <span className="order-total__value">{formatUGX(order.total)}</span>
                   <Badge tone={paymentTone(order)}>{paymentLabel(order)}</Badge>
-                </div>
+                </span>
               </td>
-              <td className="school-orders-table__td-status">
+              <td>
                 <Badge tone={schoolOrderTone(order.status)}>{order.status_display}</Badge>
               </td>
-              <td className="school-orders-table__td-date">{order.order_date}</td>
+              <td className="ledger__nowrap">{formatDay(order.order_date)}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
 
       <div className="table-card__footer">
         <Pagination

@@ -19,16 +19,34 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Download, Plus } from 'lucide-react'
-import { Button } from '@/components'
+import { SplitButton, TabBar } from '@/components'
+import { can } from '@/domain/access'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { AppShell } from '@/features/shell/components/AppShell'
 import { downloadFile, toCsv } from '@/domain/csv'
 import { useWarehouseFilter } from '@/features/shell/hooks/useWarehouseFilter'
 import { CreateSkuModal } from '../components/CreateSkuModal'
+import { CreateGarmentModal, CreateSizeModal } from '../components/CreateGarmentModal'
+import { ImportCountModal } from '../components/ImportCountModal'
+import { EditSkuModal } from '../components/EditSkuModal'
+import { GarmentsTab } from '../components/GarmentsTab'
 import { InventoryFilterBar } from '../components/InventoryFilterBar'
 import { InventoryTable } from '../components/InventoryTable'
 import { SkuDetailPanel } from '../components/SkuDetailPanel'
 import { useInventoryRows, type InventoryFilters } from '../hooks/useInventoryRows'
 import { useSizeOptions } from '../hooks/useSizeOptions'
+
+/*
+ * Two tabs, one destination. Stock answers how many; Garments answers what
+ * they are and what they cost. Garments and SKUs used to be two more sidebar
+ * entries leading to placeholder screens — Stock *is* the SKU list, so that
+ * one never needed a screen, and this is all the garment table ever needed.
+ */
+const TABS = [
+  { key: 'stock', label: 'Stock' },
+  { key: 'garments', label: 'Garments' },
+] as const
+type TabKey = (typeof TABS)[number]['key']
 
 const EMPTY_FILTERS: InventoryFilters = {
   level: null,
@@ -42,6 +60,11 @@ export function InventoryScreen() {
   const [filters, setFilters] = useState<InventoryFilters>(EMPTY_FILTERS)
   const [page, setPage] = useState(1)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isGarmentOpen, setIsGarmentOpen] = useState(false)
+  const [isSizeOpen, setIsSizeOpen] = useState(false)
+  const [isImportOpen, setIsImportOpen] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [tab, setTab] = useState<TabKey>('stock')
   // Which SKU is open, not the row object itself — switching warehouse (or
   // any other filter) refetches `rows`, and a row object captured at click
   // time would keep showing that moment's figures forever. Deriving the
@@ -51,6 +74,11 @@ export function InventoryScreen() {
   // the panel simply doesn't render — never a stale panel showing a filter
   // that no longer applies.
   const [selectedSkuId, setSelectedSkuId] = useState<number | null>(null)
+
+  const { user } = useAuth()
+  // Garments and sizes are the leads' column (F05) — narrower than SKUs,
+  // which everybody can read. The menu hides what the server would refuse.
+  const mayEditCatalogue = can(user, 'table_updates')
 
   const { rows, isLoading } = useInventoryRows(filters)
   const selectedRow = selectedSkuId !== null ? (rows.find((r) => r.skuId === selectedSkuId) ?? null) : null
@@ -100,26 +128,98 @@ export function InventoryScreen() {
     <AppShell title="Inventory">
       <div className={selectedRow ? 'inventory-layout inventory-layout--split' : 'inventory-layout'}>
         <div className="inventory-layout__main">
-          <header className="page-head page-head--split inventory-page-head">
+          {/*
+            The same head as every other screen: a green title and a sentence
+            under it. The reference design has an "Inventory / Overview"
+            eyebrow above a dark title, but an eyebrow is the breadcrumb on a
+            *detail* screen here, and nothing else in the app puts one on a
+            top-level destination or darkens its title.
+          */}
+          <header className="page-head page-head--split">
             <div>
-              <p className="page-head__eyebrow">Inventory / Overview</p>
-              <h1 className="page-head__title">Inventory Overview</h1>
+              <h1 className="page-head__title">Inventory</h1>
+              <p className="page-head__subtitle">
+                Every SKU and what each warehouse holds of it.
+              </p>
             </div>
 
+            {/*
+              Two split buttons rather than four plain ones.
+
+              The common action on each — export, and create a SKU — stays a
+              single click; the occasional ones sit behind the caret. Folding
+              everything into one menu would have tidied the head by burying
+              the thing people came to do.
+
+              Garments and sizes are leads-only (F05), so those two options
+              are hidden rather than shown-and-refused for anybody else.
+            */}
+            {/*
+              The Create button stays on both tabs — its caret is where New
+              garment lives, which is the thing you want while looking at the
+              garment table. Export is stock-only: exporting the SKU rows
+              from a screen showing garments would hand you the wrong file.
+            */}
             {!selectedRow && (
-              <div className="modal__foot-actions">
-                <Button variant="secondary" onClick={handleExport}>
+              <div className="page-head__actions">
+                {tab === 'stock' && (
+                <SplitButton
+                  variant="secondary"
+                  menuLabel="More data options"
+                  onClick={handleExport}
+                  options={[
+                    {
+                      label: 'Import stock count…',
+                      hint: 'A counted quantity per SKU. The system posts the difference.',
+                      onSelect: () => setIsImportOpen(true),
+                    },
+                  ]}
+                >
                   <Download size={16} aria-hidden />
                   Export CSV
-                </Button>
-                <Button onClick={() => setIsCreateOpen(true)}>
+                </SplitButton>
+                )}
+
+                <SplitButton
+                  menuLabel="More create options"
+                  onClick={() => setIsCreateOpen(true)}
+                  options={
+                    mayEditCatalogue
+                      ? [
+                          {
+                            label: 'New garment…',
+                            hint: 'A uniform component, before a size is chosen.',
+                            onSelect: () => setIsGarmentOpen(true),
+                          },
+                          {
+                            label: 'New size…',
+                            hint: 'Shared across garments.',
+                            onSelect: () => setIsSizeOpen(true),
+                          },
+                        ]
+                      : []
+                  }
+                >
                   <Plus size={16} aria-hidden />
                   Create New SKU
-                </Button>
+                </SplitButton>
               </div>
             )}
           </header>
 
+          {/* Garments is leads-only; hiding the tab is kinder than a tab
+              that leads to a table nobody else may read. */}
+          <TabBar
+            label="Inventory views"
+            active={tab}
+            onSelect={(key) => setTab(key as TabKey)}
+            tabs={mayEditCatalogue ? TABS : TABS.filter((entry) => entry.key === 'stock')}
+          />
+
+          {tab === 'garments' ? (
+            <GarmentsTab />
+          ) : (
+            <>
           <InventoryFilterBar
             query={filters.query}
             onQueryChange={(query) => applyFilter({ query })}
@@ -148,14 +248,28 @@ export function InventoryScreen() {
             onCreate={() => setIsCreateOpen(true)}
             isCompact={Boolean(selectedRow)}
           />
+            </>
+          )}
         </div>
 
         {selectedRow && (
-          <SkuDetailPanel row={selectedRow} onClose={() => setSelectedSkuId(null)} />
+          <SkuDetailPanel
+            row={selectedRow}
+            onClose={() => setSelectedSkuId(null)}
+            onEdit={() => setIsEditOpen(true)}
+          />
         )}
       </div>
 
       <CreateSkuModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
+      <CreateGarmentModal open={isGarmentOpen} onClose={() => setIsGarmentOpen(false)} />
+      <CreateSizeModal open={isSizeOpen} onClose={() => setIsSizeOpen(false)} />
+      <ImportCountModal open={isImportOpen} onClose={() => setIsImportOpen(false)} />
+      <EditSkuModal
+        open={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        row={selectedRow}
+      />
     </AppShell>
   )
 }

@@ -73,8 +73,10 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     ],
   },
   /*
-    Two topics, and the longer path wins — so /adjustments/transfers gets the
-    transfer notes and /adjustments/new inherits the adjustment ones.
+    Transfers has its own topic at its own path. It used to live under
+    /adjustments/transfers and rely on longest-prefix matching to get the
+    right notes; it is a top-level destination now, so the two no longer
+    overlap at all.
   */
   {
     path: '/kits',
@@ -90,7 +92,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     ],
   },
   {
-    path: '/adjustments/transfers',
+    path: '/transfers',
     title: 'Warehouse Transfers',
     points: [
       'A transfer moves stock between two AsOne warehouses. Nothing is bought or sold, so the total value of inventory is the same before and after — only its location changes.',
@@ -161,6 +163,83 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     points: [
       'Centres make the garments and are not users of this system. They exist here so production orders and receipts have something to point at.',
       'A centre supplies any warehouse. Its card shows what it has been asked for and how much has arrived.',
+    ],
+  },
+  {
+    path: '/inventory',
+    title: 'Inventory',
+    points: [
+      'One row per SKU per warehouse. The same shirt in two warehouses is two rows, because stock is held at a site and never as one national figure.',
+      'Available is what can be promised to a new order. Pick is already reserved for an order somebody is picking, and Shipped has left the building — neither is available, which is why Available can read 0 while the shelf is not empty.',
+      'A quantity turns amber once it is at or below that warehouse\u2019s minimum. The minimum is set per warehouse, because the two serve different numbers of schools.',
+      'Low stock only narrows to exactly those rows. It filters what has already loaded rather than asking the server again, so it is instant and it respects the other filters.',
+      'The table scrolls sideways \u2014 Status and Value sit past the right-hand edge on a narrow window.',
+      'Clicking a row opens that SKU beside the table: its stock at every warehouse, its value, and the last movements against it. Those movements are the ledger, so they are the record rather than a summary.',
+      'Create New SKU builds one garment in one size. The SKU number is not typed \u2014 it is the garment\u2019s code and the size, shown in the dialogue before you save.',
+      'Export CSV writes out exactly the rows the filters have left, not the whole catalogue.',
+    ],
+  },
+  {
+    path: '/reports/price-list',
+    title: 'Price Lists',
+    points: [
+      'The document a school orders from: every active garment on one level, at the price that applied on the date you choose. A garment marked for both levels appears on each list.',
+      'The date matters. A price applies over a period rather than sitting on the garment, so this can print what a school was quoted in March as easily as what they pay today.',
+      'A garment with no price on that date is left off entirely, never shown at zero — a line with no price is worse than no line on a document somebody buys from.',
+      'Which is what the amber banner is for. It names every active garment missing from the list, because the omission is otherwise invisible: a garment simply stops being orderable and nobody is told.',
+      'Always clear that banner before publishing. A school cannot order what is not on the list.',
+      'Prices are set and changed from the Garments tab on Inventory — a change closes the old price on a date and opens a new one, so past invoices still reprint correctly.',
+      'Export CSV writes the raw figures, not the formatted ones, so a spreadsheet can total them.',
+    ],
+  },
+  {
+    path: '/stock-history',
+    title: 'Stock History',
+    points: [
+      'The ledger itself — every movement in and out of every warehouse you can see, newest first. Inventory says how much is there; this says how it got that way.',
+      'Quantity is signed. Positive came into the warehouse, negative left it, and the colour follows the sign so a receipt and a pick never read alike.',
+      'Value is what moved, not a gain or a loss. A pick takes 20 units out and they are still worth what they were worth — it is snapshotted from the document that caused the movement, never recalculated.',
+      'Every filter is applied by the server, so an empty table means nothing matched in the whole ledger rather than nothing on this page. That is why there is a SKU picker here instead of a search box.',
+      'The Document column names the paper behind the row — RC a receipt, SH a shipment, ADJ an adjustment, WT a transfer, SO a school order.',
+      'Nothing here can be edited or deleted, by anybody, including through the API. Stock levels are summed from these rows, so changing one would rewrite history and today’s figure at the same time. A wrong movement is corrected by posting an offsetting one.',
+      'It opens on the last 30 days. Widen the date range for older movement — the ledger keeps everything.',
+    ],
+  },
+  {
+    path: '/users',
+    title: 'Users & Roles',
+    points: [
+      'A role decides what somebody sees. The Permissions tab is the whole matrix \u2014 seven things a role may do, five roles \u2014 and it is the same matrix the server enforces, not a picture of it.',
+      'Warehouse staff belong to one warehouse and school staff to one school; the two leads and Finance belong to all sites. An account with a site-bound role and no site sees nothing, which is why that reads in red.',
+      'Adding a user generates a password shown to you once. It is never emailed, so you pass it on yourself, and they must replace it before they can use the system.',
+      'Somebody who has forgotten their password is fixed from their profile \u2014 open the row, then Set a new password. That signs them out everywhere.',
+      'Accounts are deactivated, never deleted. Every receipt, pick and adjustment names the person who made it, and an account that vanished would take that trail with it.',
+      'A request for access appears at the top of this list and stays until somebody approves or declines it. Nothing is created until you do.',
+    ],
+  },
+  {
+    path: '/stock-history',
+    title: 'Stock History',
+    points: [
+      'Not built yet \u2014 this screen has no design.',
+      'The movements behind it already exist. Every one is visible today on a SKU: open Inventory and click the row.',
+    ],
+  },
+  {
+    path: '/pricing',
+    title: 'Pricing',
+    points: [
+      'Not built yet \u2014 this screen has no design.',
+      'A price is dated, not a number on a product: it applied over a period. An invoice raised in March must still cost what March cost, so changing a price never rewrites an order already placed.',
+      'Prices are set by the leads. Finance can read them but not change them, which surprises people \u2014 Finance owns what stock is worth, not what it sells for.',
+    ],
+  },
+  {
+    path: '/settings',
+    title: 'Settings',
+    points: [
+      'Not built yet \u2014 this screen has no design.',
+      'Your own password is changed here once it lands. Until then, ask a lead to reset it for you.',
     ],
   },
 ] as const

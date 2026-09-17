@@ -3422,7 +3422,7 @@ export interface components {
             /** @default  */
             notes: string;
         };
-        /** @description The tiles across the top — F62, plus the warehouse hub console's own. */
+        /** @description The six tiles across the top — F62. */
         DashboardSummary: {
             /** @description Units on hand and free to promise. */
             available_units: number;
@@ -3503,6 +3503,8 @@ export interface components {
             readonly id: number;
             /** @description For example "White Shirt". */
             name: string;
+            /** @description Short code used in SKU numbers, for example BTU. Filled in from the name if left blank, and never changed afterwards. */
+            readonly code: string;
             /**
              * @description Which price list this garment appears on.
              *
@@ -3513,6 +3515,8 @@ export interface components {
             school_level?: components["schemas"]["GarmentSchoolLevelEnum"];
             readonly school_level_display: string;
             colour?: string;
+            /** @description The swatch for this colour, as "#RRGGBB". Optional. */
+            colour_hex?: string;
             /** @description Inactive garments stay in reports but cannot be ordered. */
             is_active?: boolean;
             /**
@@ -4518,6 +4522,8 @@ export interface components {
             readonly id?: number;
             /** @description For example "White Shirt". */
             name?: string;
+            /** @description Short code used in SKU numbers, for example BTU. Filled in from the name if left blank, and never changed afterwards. */
+            readonly code?: string;
             /**
              * @description Which price list this garment appears on.
              *
@@ -4528,6 +4534,8 @@ export interface components {
             school_level?: components["schemas"]["GarmentSchoolLevelEnum"];
             readonly school_level_display?: string;
             colour?: string;
+            /** @description The swatch for this colour, as "#RRGGBB". Optional. */
+            colour_hex?: string;
             /** @description Inactive garments stay in reports but cannot be ordered. */
             is_active?: boolean;
             /**
@@ -4747,14 +4755,14 @@ export interface components {
             level?: components["schemas"]["SchoolLevelEnum"];
             readonly level_display?: string;
             address?: string;
+            /** @description Students enrolled. Left blank until the school reports it. */
+            student_count?: number | null;
             primary_warehouse?: number;
             readonly primary_warehouse_name?: string;
             /** @description A closed site stays in reports but takes no new work. */
             is_active?: boolean;
             /** @default 0 */
             readonly active_orders_count: number;
-            /** @default 0 */
-            readonly distinct_students_count: number;
         };
         /** @description An order, reading. Doubles as the invoice — same number, same lines. */
         PatchedSchoolOrder: {
@@ -5316,14 +5324,14 @@ export interface components {
             level: components["schemas"]["SchoolLevelEnum"];
             readonly level_display: string;
             address?: string;
+            /** @description Students enrolled. Left blank until the school reports it. */
+            student_count?: number | null;
             primary_warehouse: number;
             readonly primary_warehouse_name: string;
             /** @description A closed site stays in reports but takes no new work. */
             is_active?: boolean;
             /** @default 0 */
             readonly active_orders_count: number;
-            /** @default 0 */
-            readonly distinct_students_count: number;
         };
         /** @description Something the school ordered that the warehouse could not fill. */
         SchoolBackorder: {
@@ -8622,6 +8630,8 @@ export interface operations {
     inventory_movements_list: {
         parameters: {
             query?: {
+                date_from?: string;
+                date_to?: string;
                 document_number?: string;
                 /**
                  * @description * `RECEIPT` - Receipt from a Tailoring Center
@@ -9336,8 +9346,6 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
-                /** @description Narrow to one site. Ignored for Warehouse Staff, who are already scoped to their own; an all-locations role sees every site without it. */
-                warehouse?: number;
             };
             header?: never;
             path?: never;
@@ -9387,7 +9395,6 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
-                school?: number;
                 /**
                  * @description * `HOLD` - On hold — awaiting payment
                  *     * `RELEASED` - Released to the warehouse
@@ -9497,7 +9504,6 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
-                school?: number;
                 /**
                  * @description * `HOLD` - On hold — awaiting payment
                  *     * `RELEASED` - Released to the warehouse
@@ -9535,7 +9541,6 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
-                school?: number;
                 /**
                  * @description * `HOLD` - On hold — awaiting payment
                  *     * `RELEASED` - Released to the warehouse
@@ -9629,7 +9634,6 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
-                school?: number;
                 /**
                  * @description * `HOLD` - On hold — awaiting payment
                  *     * `RELEASED` - Released to the warehouse
@@ -9689,7 +9693,6 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
-                school?: number;
                 /**
                  * @description * `HOLD` - On hold — awaiting payment
                  *     * `RELEASED` - Released to the warehouse
@@ -9749,7 +9752,6 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
-                school?: number;
                 /**
                  * @description * `HOLD` - On hold — awaiting payment
                  *     * `RELEASED` - Released to the warehouse
@@ -9793,7 +9795,6 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
-                school?: number;
                 /**
                  * @description * `HOLD` - On hold — awaiting payment
                  *     * `RELEASED` - Released to the warehouse
@@ -9887,7 +9888,6 @@ export interface operations {
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
-                school?: number;
                 /**
                  * @description * `HOLD` - On hold — awaiting payment
                  *     * `RELEASED` - Released to the warehouse

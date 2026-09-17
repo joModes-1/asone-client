@@ -70,7 +70,7 @@ export function TransfersScreen() {
           </p>
         </div>
 
-        <Button onClick={() => navigate('/adjustments/transfers/new')}>
+        <Button onClick={() => navigate('/transfers/new')}>
           <Plus size={16} aria-hidden />
           New Transfer
         </Button>

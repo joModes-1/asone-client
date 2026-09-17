@@ -88,6 +88,15 @@ export interface InventoryRow {
   shipped: number
   /** Null when no floor is configured for this SKU at this warehouse. */
   minimumQuantity: number | null
+  /**
+   * The `MinimumStockLevel` row's own id, or null when there is no row.
+   *
+   * Carried because editing a minimum is a PATCH when one exists and a POST
+   * when one does not, and the table is the only place that already knows
+   * which. Without it the edit form would have to fetch the whole table again
+   * to find out whether it is creating or changing.
+   */
+  minimumId: number | null
   value: Money
   isActive: boolean
 }
@@ -165,7 +174,7 @@ export function useInventoryRows(filters: InventoryFilters): InventoryResult {
     stockLevels.map((s) => [`${s.sku_id}-${s.warehouse_id}`, s]),
   )
   const minimumByKey = new Map(
-    minimums.map((m) => [`${m.sku}-${m.warehouse}`, m.minimum_quantity]),
+    minimums.map((m) => [`${m.sku}-${m.warehouse}`, m]),
   )
 
   const needle = query.trim().toLowerCase()
@@ -176,7 +185,7 @@ export function useInventoryRows(filters: InventoryFilters): InventoryResult {
     for (const warehouse of warehouses) {
       const key = `${sku.id}-${warehouse.id}`
       const stock = stockByKey.get(key)
-      const minimumQuantity = minimumByKey.get(key) ?? null
+      const minimum = minimumByKey.get(key) ?? null
 
       const row: InventoryRow = {
         skuId: sku.id,
@@ -191,7 +200,8 @@ export function useInventoryRows(filters: InventoryFilters): InventoryResult {
         available: stock?.level ?? 0,
         pick: stock?.reserved ?? 0,
         shipped: shippedByKey.get(key) ?? 0,
-        minimumQuantity,
+        minimumQuantity: minimum?.minimum_quantity ?? null,
+        minimumId: minimum?.id ?? null,
         value: stock?.value ?? '0.00',
         isActive: sku.is_active ?? true,
       }

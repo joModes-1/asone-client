@@ -7,7 +7,8 @@
  * Type, Address, Primary Warehouse, Active Orders and Status are all real
  * fields now (`School.is_active`, and `active_orders_count` — annotated on
  * the server, see `SchoolViewSet.get_queryset` for exactly what "active"
- * counts). Students remains a gap: AsOne has no student roster anywhere in
+ * counts). Students is `School.student_count`, which a lead enters — AsOne
+ * has no student roster anywhere in
  * the system, a student is a free-text name on an order, not a record. The
  * server can answer a real, different question instead — distinct student
  * names across every order the school has placed — but that field isn't
@@ -21,6 +22,7 @@ import { Badge, EmptyState, Pagination } from '@/components'
 import { paths } from '@/routes/paths'
 import type { School } from '@/api/types'
 import { LIST_PAGE_SIZE } from '@/api/pageSize'
+import { formatQuantity } from '@/domain/money'
 
 /** DRF's fixed page size — see API_ENDPOINTS.md. */
 const PAGE_SIZE = LIST_PAGE_SIZE
@@ -70,7 +72,8 @@ export function SchoolsTable({
   return (
     <>
       <div className="schools-table-card">
-        <table className="schools-table">
+        {/* `ledger` for the typography every table shares. */}
+        <table className="ledger schools-table">
           <thead>
             <tr>
               <th scope="col" className="schools-table__th-name">
@@ -129,8 +132,14 @@ export function SchoolsTable({
                 <td className="schools-table__td-num schools-table__orders-num">
                   {school.active_orders_count}
                 </td>
-                <td className="schools-table__td-num" title="Not available yet">
-                  —
+                {/* Null is "nobody has told us", which is not zero — a
+                    school with no students and one nobody has counted are
+                    different facts, and printing 0 for the second would
+                    understate demand. */}
+                <td className="schools-table__td-num">
+                  {school.student_count === null || school.student_count === undefined
+                    ? '—'
+                    : formatQuantity(school.student_count)}
                 </td>
                 <td className="schools-table__td-status">
                   <Badge tone={school.is_active ? 'success' : 'neutral'}>

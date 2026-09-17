@@ -28,8 +28,8 @@ import {
   can,
   canMoveStockBetweenWarehouses,
   canReadKits,
-  canReadPrices,
   canReadSchoolOrders,
+  canReadStockHistory,
 } from '@/domain/access'
 import type { AccessFunction, CurrentUser } from '@/api/types'
 
@@ -118,7 +118,7 @@ export const NAVIGATION: readonly NavGroup[] = [
        */
       {
         label: 'Stock Transfers',
-        path: '/adjustments/transfers',
+        path: '/transfers',
         requires: (user) =>
           canMoveStockBetweenWarehouses(user) && !can(user, 'inventory_adjustments'),
         icon: 'ArrowLeftRight',
@@ -149,12 +149,22 @@ export const NAVIGATION: readonly NavGroup[] = [
       { label: 'Inventory', path: '/inventory', requires: null, icon: 'Boxes' },
 
       /*
-       * The audit trail — every movement of one SKU, in order. A separate
+       * The audit trail — every movement of every SKU, in order. A separate
        * destination from Inventory because they answer different questions:
        * Inventory says how much is there, this says how it got that way.
        * Warehouse staff see their own site; Finance and the leads see all.
+       *
+       * Not `null`. A school reads stock levels at the warehouse that serves
+       * it, but not the ledger behind them — that is every movement at every
+       * site, including other schools' picks. `StockMovementViewSet` refuses
+       * them, and this entry used to lead them to the 403.
        */
-      { label: 'Stock History', path: '/stock-history', requires: null, icon: 'History' },
+      {
+        label: 'Stock History',
+        path: '/stock-history',
+        requires: canReadStockHistory,
+        icon: 'History',
+      },
 
       /*
        * Not `null`. A kit is a way of ordering, and F33 turns it into
@@ -166,31 +176,27 @@ export const NAVIGATION: readonly NavGroup[] = [
       { label: 'Uniform Kits', path: '/kits', requires: canReadKits, icon: 'Shirt' },
 
       /*
-       * Garments, SKUs and pricing had no destination at all until
-       * 13 September — not placeholders, simply absent, which made the app
-       * look finished while the tables everything else is built on had no
-       * way in. A production order needs SKUs; a SKU needs a garment; an
-       * order needs a price.
+       * Garments and SKUs are deliberately not destinations.
        *
-       * Garments are leads-only per F05, which is narrower than SKUs
-       * (view-only for everyone) — see open question 6, since a SKU already
-       * shows its garment's name.
+       * They were entries to placeholder screens, added when nothing in the
+       * app could reach those tables at all. Inventory now covers both: its
+       * Stock tab *is* the SKU list, creating a SKU is its primary action,
+       * and New garment and New size sit behind that button's caret — which
+       * is where you discover one is missing, halfway through building a
+       * SKU.
+       *
+       * Two sidebar entries leading to "this screen is not built yet" were
+       * worse than none: they made the app look like it had four tables
+       * when it had one working screen. Removed 17 September 2026.
        */
-      { label: 'Garments', path: '/garments', requires: 'table_updates', icon: 'Shirt' },
-      { label: 'SKUs', path: '/skus', requires: null, icon: 'Tags' },
       /*
-       * Kept, and gated.
+       * Pricing is not a destination either.
        *
-       * AsOne's p.7 says "all pricing is controlled by this system", and
-       * nothing else in the app is a door to it: a school reads the price
-       * list it orders from, Finance reads prices they cannot set, and the
-       * leads set them. There is no second route in.
-       *
-       * `requires: null` was wrong for the same reason it was wrong on kits
-       * — GarmentPriceViewSet excludes warehouse staff, so the entry led a
-       * clerk to a 403.
+       * A price is an attribute of a garment, so it lives on the Garments
+       * tab of Inventory beside the thing it prices — a screen called
+       * "Pricing" would have been the garment table with one extra column
+       * and a name that hid what it was. Removed 17 September 2026.
        */
-      { label: 'Pricing', path: '/pricing', requires: canReadPrices, icon: 'Coins' },
     ],
   },
   {
@@ -236,7 +242,7 @@ export function findNavItem(path: string): NavItem | null {
 /**
  * The group holding the destination a path belongs to, or null.
  *
- * Longest matching path wins, so `/adjustments/transfers` picks the transfer
+ * Longest matching path wins, so a detail route picks the transfer
  * entry rather than whichever adjustment route happens to be listed first —
  * the same rule `helpFor` uses, for the same reason.
  */

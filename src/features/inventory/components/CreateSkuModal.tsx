@@ -26,6 +26,7 @@ import { useState, type FormEvent } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Alert, Button, Modal } from '@/components'
 import { toApiError } from '@/api/errors'
+import { swatchFor } from '@/domain/garmentColours'
 import { useCreateSku } from '../hooks/useCreateSku'
 import { useGarmentOptions } from '../hooks/useGarmentOptions'
 import { useSizeOptions } from '../hooks/useSizeOptions'
@@ -40,34 +41,15 @@ interface CreateSkuModalProps {
   onSuccess?: (sku: Sku) => void
 }
 
-/** "White Shirt" -> "WS" */
-function garmentCode(name: string): string {
-  const trimmed = name.trim()
-  if (!trimmed) return 'WS'
-  const initials = trimmed
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) => word[0]?.toUpperCase())
-    .join('')
-  return initials || trimmed.slice(0, 2).toUpperCase()
-}
-
 /**
- * A representative hex for a garment's real colour name — not a design
- * token. This isn't the app's brand palette; it's a rendering aid for
- * showing *data* (an actual `Garment.colour` string) as a dot, the same way
- * a calendar app picks a colour for an event category. Falls back to white
- * for any name not recognised, rather than guessing.
+ * The garment's code, as the server assigned it.
+ *
+ * This used to be guessed here — "White Shirt" became "WS" — which
+ * disagreed with the real code the server stores ("WSH"), so the dropdown
+ * showed one code and every SKU beneath the garment carried another.
  */
-function colorSwatch(colour: string): string {
-  const c = colour.toLowerCase()
-  if (c.includes('navy')) return '#1e3a8a'
-  if (c.includes('maroon')) return '#7f1d1d'
-  if (c.includes('gray') || c.includes('grey')) return '#64748b'
-  if (c.includes('green')) return '#15803d'
-  if (c.includes('blue')) return '#2563eb'
-  if (c.includes('black')) return '#111827'
-  return '#ffffff'
+function garmentCode(garment: { code?: string; name: string }): string {
+  return garment.code ?? ''
 }
 
 /** Mirrors Sku.build_description on the server */
@@ -175,7 +157,6 @@ export function CreateSkuModal({ isOpen, onClose, onSuccess }: CreateSkuModalPro
       title="Create New SKU"
       subtitle="Define uniform parameters to generate a unique system identifier."
       size="md"
-      className="modal--create-sku"
       footer={
         <div className="create-sku-modal__footer-row">
           <label className="create-sku-modal__toggle">
@@ -217,7 +198,7 @@ export function CreateSkuModal({ isOpen, onClose, onSuccess }: CreateSkuModalPro
           <div className="create-sku-form__select-wrapper">
             <select
               id="sku-garment"
-              className="create-sku-form__select"
+              className="input create-sku-form__select"
               value={garmentId}
               onChange={(e) => setGarmentId(e.target.value)}
               required
@@ -228,7 +209,7 @@ export function CreateSkuModal({ isOpen, onClose, onSuccess }: CreateSkuModalPro
               </option>
               {visibleGarments.map((g) => (
                 <option key={g.id} value={g.id}>
-                  {g.name} ({garmentCode(g.name)})
+                  {garmentCode(g) ? `${g.name} (${garmentCode(g)})` : g.name}
                 </option>
               ))}
             </select>
@@ -243,7 +224,7 @@ export function CreateSkuModal({ isOpen, onClose, onSuccess }: CreateSkuModalPro
           <input
             id="sku-description"
             type="text"
-            className="create-sku-form__input"
+            className="input create-sku-form__input"
             value={description}
             onChange={(e) => setDescriptionOverride(e.target.value)}
             placeholder="Short sleeve collared primary school uniform shirt"
@@ -292,7 +273,7 @@ export function CreateSkuModal({ isOpen, onClose, onSuccess }: CreateSkuModalPro
             <div className="create-sku-form__select-wrapper">
               <select
                 id="sku-size"
-                className="create-sku-form__select"
+                className="input create-sku-form__select"
                 value={sizeId}
                 onChange={(e) => setSizeId(e.target.value)}
                 required
@@ -318,11 +299,11 @@ export function CreateSkuModal({ isOpen, onClose, onSuccess }: CreateSkuModalPro
           <div className="create-sku-form__select-wrapper">
             <span
               className="create-sku-form__color-indicator"
-              style={{ backgroundColor: colorSwatch(effectiveColor) }}
+              style={{ backgroundColor: garment ? swatchFor(garment) : 'var(--garment-unknown)' }}
             />
             <select
               id="sku-color"
-              className="create-sku-form__select create-sku-form__select--with-swatch"
+              className="input create-sku-form__select create-sku-form__select--with-swatch"
               value={effectiveColor}
               disabled
               title="Set on the garment itself, not chosen per SKU — see Garments."
@@ -352,7 +333,7 @@ export function CreateSkuModal({ isOpen, onClose, onSuccess }: CreateSkuModalPro
                   id={`sku-min-${warehouse.id}`}
                   type="number"
                   min={0}
-                  className="create-sku-form__input"
+                  className="input create-sku-form__input"
                   placeholder={idx === 0 ? '50' : '30'}
                   value={minimums[warehouse.id] ?? ''}
                   onChange={(e) =>
@@ -364,9 +345,21 @@ export function CreateSkuModal({ isOpen, onClose, onSuccess }: CreateSkuModalPro
           })}
         </div>
 
+        {/*
+          The real code, not a promise of one.
+
+          A SKU number is derived — the garment's code, then the size — so it
+          can be shown before the save rather than after. This read "System
+          control number — assigned on save", which was true of the old
+          sequence numbers and has not been since.
+        */}
         <div className="create-sku-form__preview-box">
           <p className="create-sku-form__preview-label">GENERATED SKU SYSTEM PREVIEW</p>
-          <p className="create-sku-form__preview-code">System control number — assigned on save</p>
+          <p className="create-sku-form__preview-code">
+            {garment?.code && size
+              ? `${garment.code}-${size.name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()}`
+              : 'Choose a garment and a size'}
+          </p>
         </div>
       </form>
     </Modal>

@@ -50,6 +50,11 @@ export function AddSchoolModal({
     school?.primary_warehouse ? String(school.primary_warehouse) : '',
   )
   const [address, setAddress] = useState(school?.address ?? '')
+  const [students, setStudents] = useState(
+    school?.student_count === null || school?.student_count === undefined
+      ? ''
+      : String(school.student_count),
+  )
 
   const effectiveWarehouseId = warehouseId || (warehouses[0] ? String(warehouses[0].id) : '')
 
@@ -62,6 +67,11 @@ export function AddSchoolModal({
     setLevel(school?.level ?? 'PS')
     setWarehouseId(school?.primary_warehouse ? String(school.primary_warehouse) : '')
     setAddress(school?.address ?? '')
+    setStudents(
+      school?.student_count === null || school?.student_count === undefined
+        ? ''
+        : String(school.student_count),
+    )
     save.reset()
   }
 
@@ -82,6 +92,9 @@ export function AddSchoolModal({
         // As-is, not `|| undefined` — an edit that clears the address needs
         // an explicit "", or PATCH omits the key and the old value survives.
         address: address.trim(),
+        // Null, not omitted: clearing the figure has to actually clear it,
+        // and an omitted field on a PATCH leaves whatever was there.
+        student_count: students.trim() === '' ? null : Number(students),
       },
       {
         onSuccess: (saved) => {
@@ -206,6 +219,36 @@ export function AddSchoolModal({
           />
           {fieldError('address') && (
             <p className="schools-form-error">{fieldError('address')}</p>
+          )}
+        </div>
+
+        <div className="schools-form-field">
+          <label htmlFor="modal-school-students" className="schools-form-label">
+            Number of students
+          </label>
+          <input
+            id="modal-school-students"
+            type="number"
+            min={0}
+            className="schools-form-input"
+            placeholder="Leave blank if not known"
+            value={students}
+            onChange={(e) => setStudents(e.target.value)}
+          />
+          {/*
+            Blank is a real answer, and not the same as 0: a school with no
+            students and a school nobody has counted are different facts, and
+            recording the second as zero would understate what to order.
+
+            "Students", not "pupils": the field covers primary and high
+            schools alike, and pupils is primary-school wording.
+          */}
+          <p className="schools-form-hint">
+            What the school reports. Leave it blank until they do — blank and
+            zero mean different things here.
+          </p>
+          {fieldError('student_count') && (
+            <p className="schools-form-error">{fieldError('student_count')}</p>
           )}
         </div>
 

@@ -2,7 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      Three, not one. The SVG was the only icon here, and a browser that does
+      not take SVG favicons showed nothing at all rather than falling back —
+      which is what "the favicon is not there" looked like. A browser picks
+      the first format it understands, so the order matters.
+    -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AsOne Logistics</title>
     <meta name="theme-color" content="#5E8E8E" />

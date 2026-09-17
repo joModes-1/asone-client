@@ -205,7 +205,10 @@ export function PickingScreen() {
                   <th>Priority</th>
                   <th>Created</th>
                   <th>Status</th>
-                  <th aria-label="Action" />
+                  {/* Not drawn at all for a role that cannot pick — a
+                      column of dead buttons is worse than no column. A lead
+                      reads this backlog; the warehouse works it. */}
+                  {mayPick && <th>Action</th>}
                 </tr>
               </thead>
               <tbody>
@@ -234,6 +237,7 @@ export function PickingScreen() {
                           {ready ? 'Ready' : 'Completed'}
                         </Badge>
                       </td>
+                      {mayPick && (
                       <td className="ledger__num">
                         {ready ? (
                           /*
@@ -248,7 +252,6 @@ export function PickingScreen() {
                             confirmLabel="Yes, pick it"
                             pendingLabel="Picking…"
                             pending={picking === order.id}
-                            disabled={!mayPick}
                             note={`Reserves ${order.item_count} garments for ${order.student_name}. They stop being available to any other order.`}
                             onConfirm={() => {
                               setPicking(order.id)
@@ -273,6 +276,7 @@ export function PickingScreen() {
                           </Button>
                         )}
                       </td>
+                      )}
                     </tr>
                   )
                 })}
