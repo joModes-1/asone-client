@@ -38,12 +38,15 @@ import {
 } from '@/components'
 import { daysAgoISO, formatDay } from '@/domain/dates'
 import { formatQuantity } from '@/domain/money'
+import { canPostAdjustments } from '@/domain/access'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { AppShell } from '@/features/shell/components/AppShell'
 import { TransferDetailModal } from '../components/TransferDetailModal'
 import { DATE_RANGES } from '../dateRanges'
 import { TRANSFERS_PAGE_SIZE, useTransfers } from '../hooks/useAdjustments'
 
 export function TransfersScreen() {
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const [days, setDays] = useState<number | null>(30)
@@ -76,17 +79,26 @@ export function TransfersScreen() {
         </Button>
       </header>
 
-      <TabBar
-        tabs={[
-          { key: 'adjustments', label: 'Adjustments' },
-          { key: 'transfers', label: 'Warehouse Transfers' },
-        ]}
-        active="transfers"
-        onSelect={(key) => {
-          if (key === 'adjustments') navigate('/adjustments')
-        }}
-        label="Adjustment views"
-      />
+      {/*
+        The Adjustments tab only exists for somebody who may open it.
+        Transfers are the two leads *and* Finance; Adjustments are Finance
+        alone — so a lead saw a tab that answered 403 when they used it.
+        Shown rather than disabled, because a role that cannot go there has no
+        use for knowing the screen exists.
+      */}
+      {canPostAdjustments(user) && (
+        <TabBar
+          tabs={[
+            { key: 'adjustments', label: 'Adjustments' },
+            { key: 'transfers', label: 'Warehouse Transfers' },
+          ]}
+          active="transfers"
+          onSelect={(key) => {
+            if (key === 'adjustments') navigate('/adjustments')
+          }}
+          label="Adjustment views"
+        />
+      )}
 
       {transfers.isError && (
         <Alert tone="error">

@@ -11,6 +11,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import * as catalog from '@/api/catalog'
 import * as procurement from '@/api/procurement'
 import { snackbar } from '@/components'
+import { toApiError } from '@/api/errors'
 import { useSkuOptions } from '@/features/catalog/hooks/useSkuOptions'
 import { LIST_PAGE_SIZE } from '@/api/pageSize'
 
@@ -119,5 +120,75 @@ export function useCreateProductionOrder() {
       )
     },
     // Failure is reported by the shared mutation handler.
+  })
+}
+
+/**
+ * Cancel a production order — F18.
+ *
+ * Its own hook rather than a general "amend", because cancelling is the only
+ * amendment the screens offer and it is the one with consequences: the order
+ * stops counting towards what the Tailoring Centres owe, and towards what
+ * every low-stock decision assumes is already on its way.
+ *
+ * The server refuses to cancel an order goods have arrived against. That
+ * refusal is surfaced verbatim — it names the quantity received and says to
+ * close the order instead, which is more use than "could not cancel".
+ */
+export function useCancelProductionOrder(id: number) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => procurement.amendProductionOrder(id, { status: 'CANCELLED' }),
+    onSuccess: (order) => {
+      void queryClient.invalidateQueries({ queryKey: ['production-orders'] })
+      // The open-orders list feeds Receiving; a cancelled order must stop
+      // offering itself as something to receive against.
+      void queryClient.invalidateQueries({ queryKey: ['receiving'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      snackbar.success(`${order.number} cancelled`, 'It no longer counts as stock on its way.')
+    },
+    onError: (error) => {
+      const failure = toApiError(error)
+      snackbar.error('That order cannot be cancelled', failure.message)
+    },
+  })
+}
+
+/**
+ * Post a receipt that was recorded but never committed to the ledger — F21.
+ *
+ * Receiving writes the receipt and posts it in two calls. When the second
+ * fails, the first has already succeeded: a numbered receipt exists, the
+ * warehouse believes it recorded the delivery, and **no stock was raised**.
+ *
+ * The message shown at the time says to post it from the receipt — and until
+ * now there was nowhere to do that, so the instruction named an action the UI
+ * could not perform. This is that action.
+ *
+ * Rare, but the failure mode is the expensive one: stock physically on the
+ * shelf that the system does not know about, which every availability check,
+ * low-stock alert and pick decision is then wrong about.
+ */
+export function usePostReceipt() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (receiptId: number) => procurement.postReceipt(receiptId),
+    onSuccess: (receipt) => {
+      // Stock moved, so everything counting it is stale.
+      void queryClient.invalidateQueries({ queryKey: ['receipts'] })
+      void queryClient.invalidateQueries({ queryKey: ['production-orders'] })
+      void queryClient.invalidateQueries({ queryKey: ['inventory'] })
+      void queryClient.invalidateQueries({ queryKey: ['movements'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      snackbar.success(
+        `${receipt.number} posted to inventory`,
+        'Stock has been raised at the receiving warehouse.',
+      )
+    },
+    onError: (error) => {
+      snackbar.error('Could not post that receipt', toApiError(error).message)
+    },
   })
 }

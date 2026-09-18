@@ -13,7 +13,9 @@ import type {
   GarmentSchoolLevel,
   IsoDate,
   MinimumStockLevel,
+  KitPriceListRow,
   PriceListRow,
+  UnpriceableKit,
   Page,
   School,
   SchoolLevel,
@@ -339,4 +341,29 @@ export function priceList(params: { level?: GarmentSchoolLevel; on?: string }) {
  */
 export function priceGaps(params?: { level?: GarmentSchoolLevel; on?: string }) {
   return get<Garment[]>('/catalog/price-lists/gaps/', params ?? undefined)
+}
+
+/**
+ * The **kit** price list — the other half of F15 and F51.
+ *
+ * A kit's price is the sum of its components at their price on the date,
+ * calculated rather than stored: a kit has no price of its own, and giving it
+ * one would let the two disagree the first time a component moved.
+ *
+ * Same omission rule as garments, with a sharper edge — a kit is left off
+ * when **any** component is unpriced, so a catalogue that looks fully priced
+ * can still be missing kits. {@link kitPriceGaps} is how that is found.
+ */
+export function kitPriceList(params: { level?: GarmentSchoolLevel; on?: string }) {
+  return get<KitPriceListRow[]>('/catalog/price-lists/kits/', params)
+}
+
+/**
+ * Kits that cannot be priced, and the components at fault.
+ *
+ * Each row names the unpriced component garments rather than only the kit,
+ * because the cause is almost never the kit itself.
+ */
+export function kitPriceGaps(params?: { level?: GarmentSchoolLevel; on?: string }) {
+  return get<UnpriceableKit[]>('/catalog/price-lists/kits/gaps/', params ?? undefined)
 }

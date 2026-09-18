@@ -26,6 +26,9 @@ export interface ReportEntry {
   popular?: boolean
   /** Present when the server can answer it. */
   endpoint?: string
+  /** The screen that shows it, when one exists. Without this the row is a
+      promise the reports index cannot keep. */
+  path?: string
   /** Why it cannot be built, for the ones that cannot. */
   note?: string
 }
@@ -87,7 +90,11 @@ export const REPORT_CATEGORIES: readonly ReportCategory[] = [
       },
       { title: 'Vehicle Delivery Dispatch Schedules', note: 'No vehicles in the model.' },
       { title: 'Warehouse Transit Lead Times', note: 'Transfers carry no despatch or arrival time.' },
-      { title: 'Tailor Production Output Audits', endpoint: '/procurement/reports/receipts-costed/' },
+      {
+        title: 'Tailor Production Output Audits',
+        endpoint: '/procurement/reports/receipts-costed/',
+        path: '/reports/procurement-costs',
+      },
       { title: 'Receiving Variance Analysis', endpoint: '/procurement/receipts/' },
       { title: 'Pending Orders Backlog Status', endpoint: '/orders/reports/part-processed/' },
       { title: 'Driver Trip Logs', note: 'No drivers in the model.' },
@@ -124,7 +131,11 @@ export const REPORT_CATEGORIES: readonly ReportCategory[] = [
     requires: 'financial_reports',
     path: '/reports/price-list',
     reports: [
-      { title: 'Unit Production Cost Index', endpoint: '/procurement/reports/group-orders-costed/' },
+      {
+        title: 'Unit Production Cost Index',
+        endpoint: '/procurement/reports/group-orders-costed/',
+        path: '/reports/procurement-costs',
+      },
       { title: 'School Direct Price Sheets', popular: true, endpoint: '/catalog/price-lists/' },
       { title: 'Regional Subsidy Ledger', note: 'No subsidies in the model.' },
       {

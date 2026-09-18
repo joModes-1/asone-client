@@ -237,6 +237,25 @@ export function seesWarehouseDashboard(user: CurrentUser | null): boolean {
 }
 
 /**
+ * Who may post an inventory adjustment — F23, F24, F26, F27.
+ *
+ * The **Inventory Adjustments** column, which AsOne's matrix gives to Finance
+ * alone. Not the leads, and not the warehouse that did the counting — open
+ * question Q3 asks whether that separation is intended, and until it is
+ * answered the code follows the matrix.
+ *
+ * Named rather than inlined because it is now asked in two places: the
+ * sidebar entry, and the tab on Warehouse Transfers that leads here. Transfers
+ * are a wider audience — both leads *and* Finance — so a lead reaching the
+ * transfers screen was offered a tab to a screen they are refused.
+ *
+ * Mirrors `accounts/permissions.py`'s `inventory_adjustments` column.
+ */
+export function canPostAdjustments(user: CurrentUser | null): boolean {
+  return can(user, 'inventory_adjustments')
+}
+
+/**
  * True while the account is held at the password gate.
  *
  * The backend answers 403 on almost everything in this state — only

@@ -31,6 +31,7 @@ import { useCreateSku } from '../hooks/useCreateSku'
 import { useGarmentOptions } from '../hooks/useGarmentOptions'
 import { useSizeOptions } from '../hooks/useSizeOptions'
 import { useWarehouseOptions } from '@/features/catalog/hooks/useWarehouseOptions'
+import { useOrgSettings } from '@/features/settings/hooks/useOrgSettings'
 import type { GarmentSchoolLevel, Sku } from '@/api/types'
 
 const FORM_ID = 'create-sku-form'
@@ -76,6 +77,18 @@ export function CreateSkuModal({ isOpen, onClose, onSuccess }: CreateSkuModalPro
 
   const save = useCreateSku()
   const error = save.error ? toApiError(save.error) : null
+
+  /*
+   * The organisation's default minimum, from Settings — shown as the
+   * placeholder on every warehouse's box rather than typed in for you.
+   *
+   * A placeholder and not a value on purpose: a pre-filled number gets saved
+   * unread, and a floor nobody chose is how a SKU ends up alerting at 150
+   * because that is what the box said. An empty field with a suggestion in it
+   * still has to be answered.
+   */
+  const settings = useOrgSettings()
+  const suggestedMinimum = settings.data?.default_minimum_stock_threshold
 
   const visibleGarments = garments.filter(
     (g) => g.school_level === levelFilter || g.school_level === 'BOTH',
@@ -321,7 +334,7 @@ export function CreateSkuModal({ isOpen, onClose, onSuccess }: CreateSkuModalPro
         <p className="create-sku-form__section-title">SAFETY STOCK THRESHOLDS</p>
 
         <div className="create-sku-form__row-split">
-          {warehouses.map((warehouse, idx) => {
+          {warehouses.map((warehouse) => {
             const cleanName = warehouse.name.replace(/Warehouse/i, 'Hub').trim()
             const labelText = cleanName.includes('Min') ? cleanName : `${cleanName} Min.`
             return (
@@ -334,7 +347,7 @@ export function CreateSkuModal({ isOpen, onClose, onSuccess }: CreateSkuModalPro
                   type="number"
                   min={0}
                   className="input create-sku-form__input"
-                  placeholder={idx === 0 ? '50' : '30'}
+                  placeholder={suggestedMinimum !== undefined ? String(suggestedMinimum) : ''}
                   value={minimums[warehouse.id] ?? ''}
                   onChange={(e) =>
                     setMinimums((current) => ({ ...current, [warehouse.id]: e.target.value }))

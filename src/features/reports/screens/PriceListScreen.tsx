@@ -40,16 +40,22 @@
  */
 
 import { useState } from 'react'
-import { ArrowLeft, Tag, TriangleAlert } from 'lucide-react'
+import { ArrowLeft, Package, Tag, TriangleAlert } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Alert, Badge, EmptyState, SkeletonRows, snackbar } from '@/components'
 import { downloadFile, toCsv } from '@/domain/csv'
-import { formatUGX } from '@/domain/money'
+import { formatQuantity, formatUGX } from '@/domain/money'
 import { schoolLevelLabel } from '@/domain/sizes'
 import { AppShell } from '@/features/shell/components/AppShell'
 import { ExportControls } from '../components/ExportControls'
 import { today } from '../today'
-import { usePriceGaps, usePriceList, type PriceListLevel } from '../hooks/usePriceList'
+import {
+  useKitPriceGaps,
+  useKitPriceList,
+  usePriceGaps,
+  usePriceList,
+  type PriceListLevel,
+} from '../hooks/usePriceList'
 
 const LEVELS: readonly { level: PriceListLevel; label: string }[] = [
   { level: 'PS', label: 'Primary School' },
@@ -66,9 +72,13 @@ export function PriceListScreen() {
 
   const list = usePriceList(level, onDate)
   const gaps = usePriceGaps(level, onDate)
+  const kitList = useKitPriceList(level, onDate)
+  const kitGaps = useKitPriceGaps(level, onDate)
 
   const rows = list.data ?? []
   const missing = gaps.data ?? []
+  const kits = kitList.data ?? []
+  const missingKits = kitGaps.data ?? []
 
   function exportCsv() {
     const filename = `asone-price-list-${level.toLowerCase()}-${onDate}.csv`
@@ -82,7 +92,7 @@ export function PriceListScreen() {
       ),
     )
     snackbar.success(
-      `Exported ${rows.length} ${rows.length === 1 ? 'garment' : 'garments'}`,
+      `Exported ${rows.length} garments and ${kits.length} kits`,
       filename,
     )
   }
@@ -104,7 +114,10 @@ export function PriceListScreen() {
           </p>
         </div>
 
-        <ExportControls onExportCsv={exportCsv} disabled={list.isLoading || rows.length === 0} />
+        <ExportControls
+          onExportCsv={exportCsv}
+          disabled={list.isLoading || (rows.length === 0 && kits.length === 0)}
+        />
       </header>
 
       <div className="filter-bar">
@@ -220,6 +233,85 @@ export function PriceListScreen() {
               )}
             </p>
           </div>
+        )}
+      </div>
+
+      {/*
+        The kit list — the other half of F15/F51, and the one a school reads
+        first, because a kit is what they actually buy.
+
+        Its own banner, not folded into the garment one: a kit goes missing
+        for a different reason and is fixed in a different place. A garment
+        needs a price; a kit needs *every component* priced, so the banner
+        names the components rather than the kit.
+      */}
+      {!kitGaps.isError && missingKits.length > 0 && (
+        <Alert tone="warning">
+          <strong>
+            {missingKits.length} {missingKits.length === 1 ? 'kit is' : 'kits are'} missing
+            from this list
+          </strong>{' '}
+          —{' '}
+          {missingKits
+            .map((kit) =>
+              kit.has_no_items
+                ? `${kit.name} (no components yet)`
+                : `${kit.name} (needs a price for ${kit.unpriced_components.join(', ')})`,
+            )
+            .join('; ')}
+          . A kit cannot be priced until every component can.
+        </Alert>
+      )}
+
+      <div className="table-card">
+        {kitList.isLoading ? (
+          <SkeletonRows rows={4} />
+        ) : kits.length === 0 ? (
+          <EmptyState
+            title="No kit is on this list"
+            body={
+              missingKits.length > 0
+                ? 'Every kit for this level is waiting on a component price. The banner above names which.'
+                : 'No active kit belongs to this school level. A kit is built for one level and appears on one list.'
+            }
+            icon={Package}
+          />
+        ) : (
+          <>
+            <header className="table-card__head">
+              <h2 className="table-card__title">Uniform Kits</h2>
+            </header>
+            <div className="table-scroll">
+              <table className="ledger ledger--price-list">
+                <thead>
+                  <tr>
+                    <th>Kit</th>
+                    <th>Name</th>
+                    <th className="ledger__num">Garments</th>
+                    <th className="ledger__num">Price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {kits.map((kit) => (
+                    <tr key={kit.kit_id}>
+                      <td className="ledger__code">{kit.kit_number}</td>
+                      <td className="ledger__wrap">{kit.name}</td>
+                      <td className="ledger__num t-numeric">
+                        {formatQuantity(kit.item_count)}
+                      </td>
+                      <td className="ledger__num t-numeric">{formatUGX(kit.unit_price)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="table-card__footer">
+              <p className="table-card__note">
+                Each price is the sum of the kit&rsquo;s components on this date —
+                a kit has no price of its own.
+              </p>
+            </div>
+          </>
         )}
       </div>
 

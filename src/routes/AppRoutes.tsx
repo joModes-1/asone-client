@@ -31,6 +31,7 @@ import { WelcomeScreen } from '@/features/auth/screens/WelcomeScreen'
 import { HomeScreen } from '@/features/dashboard/screens/HomeScreen'
 import { ReportsIndexScreen } from '@/features/reports/screens/ReportsIndexScreen'
 import { PriceListScreen } from '@/features/reports/screens/PriceListScreen'
+import { ProcurementCostScreen } from '@/features/reports/screens/ProcurementCostScreen'
 import { StockReportScreen } from '@/features/reports/screens/StockReportScreen'
 import { PlaceOrderScreen } from '@/features/orders/screens/PlaceOrderScreen'
 import { OrderDetailScreen } from '@/features/orders/screens/OrderDetailScreen'
@@ -312,6 +313,18 @@ export function AppRoutes() {
             within it — not on `table_updates`, which is who may *set* a
             price rather than who may read the list.
           */}
+          {/* F55 and F56 — what was committed to the TCs and what arrived. */}
+          <Route
+            path="/reports/procurement-costs"
+            element={
+              <RequireAuth>
+                <RequireAccess requires="financial_reports">
+                  <ProcurementCostScreen />
+                </RequireAccess>
+              </RequireAuth>
+            }
+          />
+
           <Route
             path="/reports/price-list"
             element={

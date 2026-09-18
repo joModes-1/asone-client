@@ -510,3 +510,35 @@
 @media print {
   .page-back { display: none !important; }
 }
+
+/*
+ * A report row that leads somewhere.
+ *
+ * Most rows in the catalogue are inert — a record of what the data could
+ * answer — so the few with a screen behind them have to look different, not
+ * just behave differently. Brand colour and an underline on hover, the same
+ * affordance a `.ledger__link` gets in a table.
+ */
+.report-row__title--link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: var(--weight-medium);
+}
+
+.report-row__title--link:hover,
+.report-row__title--link:focus-visible {
+  text-decoration: underline;
+}
+
+/* A checkbox in the filter bar — the band is built for label+control pairs,
+   and a bare checkbox otherwise sits without the gap the others have. */
+.filter-bar__field--check {
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.filter-bar__field--check input[type='checkbox'] {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+}

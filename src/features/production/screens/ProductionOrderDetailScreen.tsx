@@ -25,13 +25,17 @@
  */
 
 import { Link, useParams } from 'react-router-dom'
-import { ChevronRight, Printer } from 'lucide-react'
-import { Badge, Button, LoadingScreen, SkeletonRows } from '@/components'
+import { Ban, ChevronRight, Printer } from 'lucide-react'
+import { Badge, Button, ConfirmButton, LoadingScreen, SkeletonRows } from '@/components'
 import { formatQuantity } from '@/domain/money'
 import { fulfilmentTone } from '@/domain/production'
 import { relativeTime } from '@/domain/dates'
+import { canRaiseProductionOrder, canReceiveAndShip } from '@/domain/access'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { AppShell } from '@/features/shell/components/AppShell'
 import {
+  useCancelProductionOrder,
+  usePostReceipt,
   useOrderOutstanding,
   useOrderReceipts,
   useProductionOrder,
@@ -60,9 +64,13 @@ export function ProductionOrderDetailScreen() {
   const { orderId } = useParams()
   const id = Number(orderId)
 
+  const { user } = useAuth()
   const { data: order, isLoading, isError } = useProductionOrder(id)
   const manifest = useOrderOutstanding(id)
   const receipts = useOrderReceipts(id)
+  const cancel = useCancelProductionOrder(id)
+  const postReceipt = usePostReceipt()
+  const canReceive = canReceiveAndShip(user)
 
   if (isLoading) return <LoadingScreen message="Loading production order" />
 
@@ -103,6 +111,33 @@ export function ProductionOrderDetailScreen() {
             <Printer size={16} aria-hidden />
             Print Manifest
           </Button>
+
+          {/*
+            Cancelling is the only amendment the screens offer, and the same
+            column that raises an order — what to ask a Tailoring Centre to
+            make, and whether to stop asking, is one decision.
+
+            Hidden once anything has arrived, rather than shown and refused:
+            the server will not cancel an order goods were received against,
+            and offering a button that always fails is worse than not having
+            one. `fulfilment_status` is AWAITING only while nothing has come.
+          */}
+          {canRaiseProductionOrder(user) &&
+            order.status === 'OPEN' &&
+            order.fulfilment_status === 'AWAITING' && (
+              <ConfirmButton
+                variant="secondary"
+                title={`Cancel ${order.number}?`}
+                confirmLabel="Cancel the order"
+                pendingLabel="Cancelling…"
+                pending={cancel.isPending}
+                note={`${order.tailoring_center_name} will no longer be expected to deliver this, and it stops counting as stock on its way. The order itself is kept.`}
+                onConfirm={() => cancel.mutate()}
+              >
+                <Ban size={16} aria-hidden />
+                Cancel Order
+              </ConfirmButton>
+            )}
         </div>
       </header>
 
@@ -211,6 +246,30 @@ export function ProductionOrderDetailScreen() {
                       <p className="history__when">
                         {formatDateTime(receipt.created_at)} · {relativeTime(receipt.created_at)}
                       </p>
+
+                      {/*
+                        Recording a receipt and posting it to the ledger are
+                        two calls. When the second fails the first has already
+                        succeeded — a numbered receipt exists and no stock was
+                        raised, which every availability check is then wrong
+                        about. The message at the time says to post it from
+                        the receipt; this is where that happens.
+                      */}
+                      {!receipt.is_posted && canReceive && (
+                        <div className="history__action">
+                          <ConfirmButton
+                            size="sm"
+                            title={`Post ${receipt.number} to inventory?`}
+                            confirmLabel="Raise the stock"
+                            pendingLabel="Posting…"
+                            pending={postReceipt.isPending}
+                            note={`Raises ${formatQuantity(units)} units at ${receipt.warehouse_name} and writes a permanent ledger row. This cannot be undone.`}
+                            onConfirm={() => postReceipt.mutate(receipt.id)}
+                          >
+                            Post to inventory
+                          </ConfirmButton>
+                        </div>
+                      )}
                     </div>
                   </li>
                 )

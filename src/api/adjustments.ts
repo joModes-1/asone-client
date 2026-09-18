@@ -13,7 +13,7 @@
  * into one button that silently does both.
  */
 
-import { get, post } from './http'
+import { get, patch, post } from './http'
 import type {
   InventoryAdjustment,
   IsoDate,
@@ -35,6 +35,45 @@ import type {
  */
 export function reasonCodes(params?: { is_active?: boolean }) {
   return get<Page<ReasonCode>>('/inventory/reason-codes/', params ?? undefined)
+}
+
+/**
+ * Add a reason code — F13.
+ *
+ * `direction` is the load-bearing field: it decides whether posting against
+ * this code adds to stock or takes away, so the person posting an adjustment
+ * never chooses a sign. Getting it wrong on a new code means every adjustment
+ * made against it moves stock the wrong way.
+ */
+export interface ReasonCodeInput {
+  code: string
+  name: string
+  description?: string
+  direction: 'INCREASE' | 'DECREASE'
+}
+
+export function createReasonCode(input: ReasonCodeInput) {
+  return post<ReasonCode>('/inventory/reason-codes/', input)
+}
+
+/**
+ * Amend a code, or retire it with `is_active: false`.
+ *
+ * **There is no delete, by design.** Past adjustments point at the code, and
+ * an audit trail that cannot say why a movement happened is not an audit
+ * trail. Retiring keeps it on every adjustment already posted while removing
+ * it from the choices for new ones.
+ *
+ * `direction` is deliberately not amendable here even though the server would
+ * take it: flipping the direction of a code already used would silently
+ * reverse the meaning of every adjustment posted against it. A code pointing
+ * the wrong way is retired and replaced.
+ */
+export function updateReasonCode(
+  id: number,
+  input: Partial<Omit<ReasonCodeInput, 'direction'>> & { is_active?: boolean },
+) {
+  return patch<ReasonCode>(`/inventory/reason-codes/${id}/`, input)
 }
 
 // ---------------------------------------------------------------------------

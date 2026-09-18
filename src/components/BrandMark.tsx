@@ -7,7 +7,7 @@
  * parent — it scales by ratio from a single `width`.
  */
 
-import logoUrl from '@/assets/brand/asone-logo.svg'
+import logoUrl from '@/assets/brand/asone-logo.png'
 
 /** Designed geometry. Any other size is derived from this ratio. */
 const NATURAL_WIDTH = 158

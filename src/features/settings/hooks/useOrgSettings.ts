@@ -17,6 +17,13 @@ export function useOrgSettings() {
   return useQuery({
     queryKey: KEY,
     queryFn: () => organizationApi.retrieve(),
+    /*
+     * Long-lived. This is org-wide master data that changes a few times a
+     * year, and the sidebar reads it on every screen — refetching it as
+     * often as a stock level would be a request per navigation for a string
+     * that has not moved since install.
+     */
+    staleTime: 10 * 60 * 1000,
   })
 }
 

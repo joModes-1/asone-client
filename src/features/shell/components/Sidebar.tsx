@@ -26,10 +26,11 @@
 
 import { NavLink } from 'react-router-dom'
 import { ChevronDown, LogOut } from 'lucide-react'
-import markUrl from '@/assets/brand/asone-mark.svg'
+import markUrl from '@/assets/brand/asone-mark.png'
 import { Avatar } from '@/components'
 import { fullName, initials } from '@/domain/access'
 import type { CurrentUser } from '@/api/types'
+import { useOrgSettings } from '@/features/settings/hooks/useOrgSettings'
 import { visibleNavigation } from '../visibleNavigation'
 import { useNavGroups } from '../hooks/useNavGroups'
 import { NavIcon } from './NavIcon'
@@ -43,6 +44,15 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
   const groups = visibleNavigation(user)
   const { isOpen, toggle } = useNavGroups()
 
+  /*
+   * The organisation's own name, from Settings — the one place that field is
+   * read, and the reason it is a setting at all. Falls back to the product
+   * name while the query is in flight or if it fails: a sidebar with no
+   * wordmark for a moment is worse than one that is briefly generic.
+   */
+  const { data: orgSettings } = useOrgSettings()
+  const wordmark = orgSettings?.organization_name?.trim() || 'AsOne Logistics'
+
   return (
     <nav className="sidebar" id="app-nav" aria-label="Main">
       <div className="sidebar__brand">
@@ -51,7 +61,7 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
         <span className="sidebar__mark">
           <img src={markUrl} width={33} height={32} alt="" aria-hidden />
         </span>
-        <span className="sidebar__wordmark">AsOne Logistics</span>
+        <span className="sidebar__wordmark">{wordmark}</span>
       </div>
 
       <div className="sidebar__groups">

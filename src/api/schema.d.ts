@@ -896,6 +896,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/catalog/price-lists/kits/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kit price list for Primary or High School
+         * @description The **kit** half of F15 and F51 — AsOne asks for printable price lists at SKU and Uniform Kit level, and `/price-lists/` is the garment half.
+         *
+         *     A kit's price is the sum of its components at their price on the date, calculated rather than stored: a kit has no price of its own, and giving it one would let the two disagree the first time a component moved.
+         *
+         *     **A kit that cannot be priced is omitted**, exactly as an unpriced garment is — and a kit is unpriceable when *any* component has no price, or when it has no components. That means a fully priced-looking catalogue can still be missing kits, which is what `/price-lists/kits/gaps/` is for.
+         *
+         *     Unlike garments there is no `BOTH`: a kit belongs to one school level and appears on one list.
+         */
+        get: operations["catalog_price_lists_kits_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/catalog/price-lists/kits/gaps/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kits that cannot be priced
+         * @description The gap report behind the kit price list. Each row names the **component garments** missing a price, because the cause is almost never the kit itself — reporting only the kit sends somebody to fix the wrong record.
+         */
+        get: operations["catalog_price_lists_kits_gaps_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/catalog/prices/": {
         parameters: {
             query?: never;
@@ -3861,6 +3907,22 @@ export interface components {
             quantity: number;
         };
         /**
+         * @description One line of the **kit** price list — F15, F51.
+         *
+         *     `unit_price` is the sum of the kit's components at their price on the
+         *     date, calculated rather than stored: a kit has no price of its own, and
+         *     giving it one would let the two disagree the first time a component moved.
+         */
+        KitPriceListRow: {
+            kit_id: number;
+            kit_number: string;
+            name: string;
+            /** @description Garments in the kit, counting quantities. */
+            item_count: number;
+            /** Format: decimal */
+            unit_price: string;
+        };
+        /**
          * @description Username and password in, access + refresh + the user record out.
          *
          *     No custom claims are packed into the token. The role travels in the
@@ -3973,6 +4035,14 @@ export interface components {
          *
          *     Cancelling is a status change, not a delete: an order funds a Tailoring
          *     Center, so the document has to survive being withdrawn.
+         *
+         *     **An order goods have already arrived against cannot be cancelled.** That
+         *     guard is here rather than in the view because it is a fact about the
+         *     document, not about who is asking: receipts point at this order and carry
+         *     the value the ledger was written from, so cancelling it would leave posted
+         *     stock attributed to an order that claims it was never placed. Close it
+         *     instead — that says the order is finished, which is what actually
+         *     happened.
          */
         OrderAmend: {
             status?: components["schemas"]["ProcurementOrderStatusEnum"];
@@ -4762,6 +4832,14 @@ export interface components {
          *
          *     Cancelling is a status change, not a delete: an order funds a Tailoring
          *     Center, so the document has to survive being withdrawn.
+         *
+         *     **An order goods have already arrived against cannot be cancelled.** That
+         *     guard is here rather than in the view because it is a fact about the
+         *     document, not about who is asking: receipts point at this order and carry
+         *     the value the ledger was written from, so cancelling it would leave posted
+         *     stock attributed to an order that claims it was never placed. Close it
+         *     instead — that says the order is finished, which is what actually
+         *     happened.
          */
         PatchedOrderAmend: {
             status?: components["schemas"]["ProcurementOrderStatusEnum"];
@@ -4903,10 +4981,6 @@ export interface components {
             low_stock_alerts_enabled?: boolean;
             receipt_discrepancy_alerts_enabled?: boolean;
             backorder_allocation_alerts_enabled?: boolean;
-            /** @description Stored for a future offline mode. No code reads this value today. */
-            auto_sync_interval_minutes?: number;
-            /** @description Stored for a future offline mode. No code reads this value today. */
-            offline_data_retention_days?: number;
             default_paper_size?: components["schemas"]["DefaultPaperSizeEnum"];
             readonly default_paper_size_display?: string;
             packing_list_layout?: components["schemas"]["PackingListLayoutEnum"];
@@ -5631,10 +5705,6 @@ export interface components {
             low_stock_alerts_enabled?: boolean;
             receipt_discrepancy_alerts_enabled?: boolean;
             backorder_allocation_alerts_enabled?: boolean;
-            /** @description Stored for a future offline mode. No code reads this value today. */
-            auto_sync_interval_minutes?: number;
-            /** @description Stored for a future offline mode. No code reads this value today. */
-            offline_data_retention_days?: number;
             default_paper_size?: components["schemas"]["DefaultPaperSizeEnum"];
             readonly default_paper_size_display: string;
             packing_list_layout?: components["schemas"]["PackingListLayoutEnum"];
@@ -5849,6 +5919,22 @@ export interface components {
              * @default
              */
             reason: string;
+        };
+        /**
+         * @description A kit that would be left off a price list, and why.
+         *
+         *     The cause is usually a component, not the kit — so the row names the
+         *     garments that are missing a price rather than only reporting the kit,
+         *     which would send somebody to fix the wrong record.
+         */
+        UnpriceableKit: {
+            kit_id: number;
+            kit_number: string;
+            name: string;
+            school_level: string;
+            unpriced_components: string[];
+            /** @description True when the kit is empty — a different problem with the same symptom. */
+            has_no_items: boolean;
         };
         /**
          * @description The current user, as returned by login and by GET /api/auth/me/.
@@ -7499,6 +7585,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Garment"][];
+                };
+            };
+        };
+    };
+    catalog_price_lists_kits_list: {
+        parameters: {
+            query: {
+                /** @description `PS` or `HS`. */
+                level: string;
+                /** @description Date, `YYYY-MM-DD`. Defaults to today. */
+                on?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KitPriceListRow"][];
+                };
+            };
+        };
+    };
+    catalog_price_lists_kits_gaps_list: {
+        parameters: {
+            query?: {
+                /** @description Limit to `PS` or `HS`. */
+                level?: string;
+                /** @description Date, `YYYY-MM-DD`. Defaults to today. */
+                on?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnpriceableKit"][];
                 };
             };
         };

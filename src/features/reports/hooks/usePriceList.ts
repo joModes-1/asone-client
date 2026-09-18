@@ -31,6 +31,29 @@ export function usePriceList(level: PriceListLevel, onDate: string) {
   })
 }
 
+/**
+ * The kit half of the same list — F15, F51.
+ *
+ * Its own query rather than part of the garment one: they are separate
+ * documents a school reads for different reasons, and a failure on either
+ * should not take the other down with it.
+ */
+export function useKitPriceList(level: PriceListLevel, onDate: string) {
+  return useQuery({
+    queryKey: ['catalog', 'kit-price-list', level, onDate],
+    queryFn: () => catalogApi.kitPriceList({ level, on: onDate }),
+    staleTime: FRESH_MS,
+  })
+}
+
+export function useKitPriceGaps(level: PriceListLevel, onDate: string) {
+  return useQuery({
+    queryKey: ['catalog', 'kit-price-gaps', level, onDate],
+    queryFn: () => catalogApi.kitPriceGaps({ level, on: onDate }),
+    staleTime: FRESH_MS,
+  })
+}
+
 export function usePriceGaps(level: PriceListLevel, onDate: string) {
   return useQuery({
     queryKey: ['catalog', 'price-gaps', level, onDate],

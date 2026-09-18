@@ -20,8 +20,10 @@
  * gap is the whole reason the compare step exists.
  */
 
-import { get, post } from './http'
+import { get, patch, post } from './http'
 import type {
+  GroupOrderCosted,
+  ReceiptsByTailoringCenter,
   OutstandingRow,
   Page,
   ProductionOrder,
@@ -105,6 +107,27 @@ export interface ProductionOrderInput {
  * `group_order` is optional: the first season's orders break down a group
  * order, reorders later in the year have none.
  */
+/**
+ * Amend a production order's header — F18.
+ *
+ * Header fields only: lines are not editable, and the server rejects an
+ * attempt rather than half-accepting it.
+ *
+ * Cancelling is a status change, never a delete — the document funds a
+ * Tailoring Centre and has to survive being withdrawn. The server refuses to
+ * cancel an order goods have already arrived against, because receipts point
+ * at it and carry the value the ledger was written from; close it instead.
+ */
+export interface ProductionOrderAmendment {
+  status?: 'OPEN' | 'CLOSED' | 'CANCELLED'
+  due_in_warehouse_date?: string | null
+  notes?: string
+}
+
+export function amendProductionOrder(id: number, body: ProductionOrderAmendment) {
+  return patch<ProductionOrder>(`/procurement/production-orders/${id}/`, body)
+}
+
 export function createProductionOrder(body: ProductionOrderInput) {
   return post<ProductionOrder>('/procurement/production-orders/', body)
 }
@@ -148,4 +171,54 @@ export function createReceipt(body: ReceiptInput) {
  */
 export function postReceipt(id: number) {
   return post<Receipt>(`/procurement/receipts/${id}/post_to_inventory/`, {})
+}
+
+/**
+ * Group orders, costed — F55.
+ *
+ * What AsOne committed to the Tailoring Centres over a period, at the price
+ * agreed on the day rather than today's price list. `totals` is the single
+ * figure Finance usually wants; `orders` is the working behind it.
+ *
+ * Cancelled orders are excluded by default. A withdrawn commitment is not a
+ * cost, and including it by default would overstate every period it appears
+ * in — but it is available, because "what did we cancel" is a real question.
+ */
+export interface GroupOrdersCostedReport {
+  totals: { orders: number; quantity: number; value: string }
+  orders: GroupOrderCosted[]
+}
+
+export function groupOrdersCosted(params?: {
+  from?: string
+  to?: string
+  include_cancelled?: boolean
+}) {
+  return get<GroupOrdersCostedReport>(
+    '/procurement/reports/group-orders-costed/',
+    params ?? undefined,
+  )
+}
+
+/**
+ * Receipts from Tailoring Centres, costed — F56.
+ *
+ * What each centre actually delivered and what it was worth — **counted**,
+ * not what the order asked for or the packing list claimed. A short delivery
+ * is worth less, and this is the report that shows it.
+ */
+export interface ReceiptsCostedReport {
+  by_tailoring_center: ReceiptsByTailoringCenter[]
+}
+
+export function receiptsCosted(params?: {
+  from?: string
+  to?: string
+  tailoring_center?: number
+  warehouse?: number
+}) {
+  return get<ReceiptsCostedReport>(
+    '/procurement/reports/receipts-costed/',
+    params ?? undefined,
+  )
 }

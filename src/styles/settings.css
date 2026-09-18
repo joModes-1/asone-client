@@ -5,9 +5,31 @@
  * belong to one screen and nothing else reads them.
  */
 
+/*
+ * The section card.
+ *
+ * ---------------------------------------------------------------------------
+ * Why this is not the shared `<Panel>`
+ * ---------------------------------------------------------------------------
+ * It is a `<fieldset>` with a `<legend>`, and that is the whole reason. One
+ * `disabled` on the fieldset disables every control inside it, which is how a
+ * role that may read settings but not change them gets a read-only screen
+ * without touching a single input. `<Panel>` renders a `<section>` with an
+ * `<h2>` and cannot do that — swapping to it would mean disabling fourteen
+ * controls by hand and re-adding one each time somebody adds a field.
+ *
+ * So it stays a fieldset, and instead matches `.panel` value for value below
+ * — including the flex column and 20px padding it was previously missing — so
+ * the two cannot look different. If `.panel` changes, change this with it.
+ */
 .settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
   margin: 0 0 var(--space-4);
-  padding: var(--space-4);
+  /* 20px, matching `.panel` in dashboard.css exactly — not --space-4, which
+     is a near-miss that reads as a mistake beside any other card. */
+  padding: 20px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
@@ -18,20 +40,65 @@
   opacity: 0.7;
 }
 
-/* Same size as `.panel__title` elsewhere (dashboard.css) — a section
-   heading, not an annotation, and every other screen's section titles use
-   --text-h3, not --text-body. */
+/*
+ * Same size as `.panel__title` (dashboard.css) — a section heading, not an
+ * annotation, and every other screen's section titles use --text-h3.
+ *
+ * `float` is what stops it looking like a fieldset. A browser lifts a
+ * `<legend>` out of flow and paints it *into* the card's top border, leaving
+ * a notch in the outline — which is the one thing on this screen that did not
+ * match any other card in the app, or the design. Floating it puts it back in
+ * normal flow as an ordinary heading inside an unbroken border, and keeps the
+ * element a real `<legend>`, which is what names the fieldset for a screen
+ * reader and what makes `disabled` on the fieldset announce correctly.
+ *
+ * `width: 100%` because a float otherwise shrink-wraps, and the clearing
+ * `::after` because a floated legend no longer contributes height.
+ */
 .settings-section__title {
-  padding: 0 var(--space-2);
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin-bottom: var(--space-2);
   font-size: var(--text-h3);
   font-weight: var(--weight-bold);
   color: var(--text-primary);
 }
 
+.settings-section__title::after {
+  content: '';
+  display: block;
+  clear: both;
+}
+
+/* Says a section is stored-only. Amber, not grey: it is a caveat about
+   whether the control works, not a description of what it does. */
 .settings-section__note {
-  margin: 0 0 var(--space-3);
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--warning);
+}
+
+/* Explains a control that does work. Grey, and sits under its own field. */
+.settings-section__hint {
+  margin: calc(var(--space-3) * -1) 0 0;
   font-size: var(--text-caption);
   color: var(--text-secondary);
+}
+
+/*
+ * A stored-only group inside a section that otherwise works.
+ *
+ * Set apart by a rule rather than a second card, because it is not a separate
+ * subject — it is the same subject with a caveat, and a nested card would
+ * read as one.
+ */
+.settings-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
 }
 
 .settings-grid {
@@ -54,11 +121,39 @@
   .settings-row-2col { grid-template-columns: 1fr; }
 }
 
+/*
+ * Two cards side by side, matched in height.
+ *
+ * `.settings-section` carries a bottom margin for the stacked sections above;
+ * inside a grid row that margin lands under one card and not the other, so it
+ * comes off here and the row's own gap does the spacing. `align-items` is
+ * grid's default stretch made explicit — the two sections hold different
+ * numbers of controls, and cards of visibly different heights on one row read
+ * as a mistake rather than as content.
+ */
+.settings-row-2col--stretch { align-items: stretch; }
+.settings-row-2col--stretch > .settings-section { margin-bottom: 0; }
+
+/*
+ * One column inside a paired card, always.
+ *
+ * `.settings-grid` is two columns, which is right for a full-width section
+ * and wrong inside one that is already half the page: at 1280px it left each
+ * control about 200px, and a `<select>` clips its own value rather than
+ * wrapping — "East Africa Time (EAT) / Kampala (UTC+3)" rendered as "East
+ * Africa Time", and the currency lost the "(UGX)" that is the whole point of
+ * the line. A field that cannot show what is selected is not a field.
+ *
+ * Stacking also evens the two cards out: General Settings holds four controls
+ * against Inventory Parameters' longer group, and side by side in two columns
+ * it stretched to match with a band of empty card underneath.
+ */
+.settings-row-2col--stretch .settings-grid { grid-template-columns: 1fr; }
+
 .settings-checkbox {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-top: var(--space-3);
   font-size: var(--text-body);
   color: var(--text-primary);
   cursor: pointer;
@@ -75,4 +170,81 @@
   justify-content: flex-end;
   gap: var(--space-3);
   margin-top: var(--space-2);
+}
+
+/* System Alerts is three checkboxes and nothing else; the section's own
+   --space-4 gap is too airy for a tick list. */
+.settings-section .settings-checkbox + .settings-checkbox {
+  margin-top: calc(var(--space-4) * -1 + var(--space-2));
+}
+
+/* ---------------------------------------------------------------------------
+ * Reason codes — a table, not a form
+ * ------------------------------------------------------------------------ */
+
+/*
+ * A section that is not a `<fieldset>`.
+ *
+ * Every other section on this screen is one, because `disabled` on a fieldset
+ * is what makes the whole screen read-only for a role that may not edit. This
+ * one holds a table and its own buttons, and disabling a table does nothing —
+ * the read-only case is handled by not rendering the Action column at all.
+ * So it is a plain `<section>` that borrows the card.
+ */
+.settings-section--plain {
+  display: block;
+}
+
+/* A heading in a section, not a legend in a fieldset — so none of the float
+   or clearing the legend needs. */
+.settings-section__title--plain {
+  float: none;
+  width: auto;
+  margin: 0 0 var(--space-2);
+}
+
+.settings-section__title--plain::after { content: none; }
+
+/* The lead paragraph under that heading sits directly below it, unlike the
+   hint that follows a field and pulls itself up into the gap. */
+.settings-section__hint--lead {
+  margin: 0 0 var(--space-4);
+}
+
+/* Buttons that start a form rather than commit one. */
+.settings-actions--start {
+  justify-content: flex-start;
+  margin-top: var(--space-4);
+}
+
+/*
+ * The direction choice.
+ *
+ * A real fieldset because the two radios are one question, and a legend is
+ * what tells a screen reader that. Borderless — it sits inside a card that
+ * already has one, and a second outline would read as a second card.
+ */
+.settings-choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.settings-choice__legend {
+  float: none;
+  width: auto;
+  padding: 0;
+  margin-bottom: var(--space-1);
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.settings-choice input[type='radio'] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
 }

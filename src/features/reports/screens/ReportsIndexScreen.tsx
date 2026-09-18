@@ -76,7 +76,18 @@ function CategoryCard({ category }: { category: ReportCategory }) {
             className={`report-row${isLive(report) ? '' : ' report-row--pending'}`}
             title={report.note}
           >
-            <span className="report-row__title">{report.title}</span>
+            {/*
+              A row with a screen behind it is a link. The rest are a
+              catalogue of what the data could answer — deliberately inert,
+              and marked so, rather than links that go nowhere.
+            */}
+            {report.path ? (
+              <Link className="report-row__title report-row__title--link" to={report.path}>
+                {report.title}
+              </Link>
+            ) : (
+              <span className="report-row__title">{report.title}</span>
+            )}
             {report.popular && <span className="report-row__tag">Popular</span>}
           </li>
         ))}
