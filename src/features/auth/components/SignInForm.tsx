@@ -73,7 +73,7 @@ export function SignInForm({ onSubmit, pending, error }: SignInFormProps) {
       </div>
 
       <div className="signin__actions">
-        <Button type="submit" size="lg" disabled={pending}>
+        <Button type="submit" size="lg" full disabled={pending}>
           {pending ? 'Signing in…' : 'Sign In to System'}
         </Button>
       </div>

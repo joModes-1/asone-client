@@ -39,6 +39,7 @@ interface ModalProps {
   children: ReactNode
   /** Pinned below the scrolling body. */
   footer?: ReactNode
+  className?: string
 }
 
 export function Modal({
@@ -49,6 +50,7 @@ export function Modal({
   size = 'sm',
   children,
   footer,
+  className,
 }: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null)
   // Unique, so two dialogs mounted at once cannot share an id.
@@ -79,7 +81,7 @@ export function Modal({
         onClose()
       }}
     >
-      <div className={`modal modal--${size}`}>
+      <div className={`modal modal--${size}${className ? ` ${className}` : ''}`}>
         <header className="modal__head">
           <div>
             <h2 className="modal__title" id={titleId}>

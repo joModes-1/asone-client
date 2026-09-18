@@ -1,60 +1,56 @@
 /**
- * "+ Add User" — a 3-step wizard: details, review, done.
+ * "+ Add User" — a wizard: details, review, then the one-time password.
  *
- * There is no modal/dialog component anywhere else in this codebase yet —
- * this is the first one. Kept local to this feature rather than promoted to
- * `components/` until a second caller needs a modal shell, so the general
- * case is designed from two examples instead of guessed from one.
+ * ---------------------------------------------------------------------------
+ * On the shared `Modal`, not its own overlay
+ * ---------------------------------------------------------------------------
+ * This was a `position: fixed` div portalled into `<body>`, written when
+ * there was no shared dialog. There is one now — `components/Modal.tsx`, on
+ * the native `<dialog>` element — and it does by construction what the
+ * portal was working around, plus three things the hand-rolled version never
+ * had: focus is trapped inside, the rest of the page goes inert to a screen
+ * reader, and the top layer means no ancestor's stacking context can cover
+ * it.
  *
- * Step 1 collects the fields; step 2 (of 3 — see the design's "Step 1 of 3")
- * is folded into a review inside step 3 here, because the design's own
- * screenshots show only steps 1 and 3 — nothing distinguishes a separate
- * step 2 from the review. Confirm with the design owner if a distinct
- * middle step is meant to exist.
+ * It also cost about ninety lines of CSS that shadowed the real dialog's
+ * names. Every `.modal__*` class still used below is prefixed `wizard__`
+ * instead, so this file cannot squat on the shared namespace again.
  *
- * Phone Number is rendered because the design calls for it, but is not sent
- * anywhere: the server's User model has no phone_number field or column at
- * all. Typing one here is silently discarded on submit. This needs either a
- * backend field or a decision to drop the input — see the summary given
- * alongside this screen.
+ * ---------------------------------------------------------------------------
+ * Three steps, two of them drawn
+ * ---------------------------------------------------------------------------
+ * The design shows "Step 1 of 3" and a step 3 review; nothing distinguishes
+ * a middle step from that review, so step 2 is the review and the counter
+ * says so. Worth confirming with the design owner rather than inventing a
+ * step to fill the gap.
  *
  * A fourth, undesigned state follows a successful Confirm: the server
- * returns the generated password once, on this response only, and it is
- * never emailed (see `api/users.ts`). Dropping it silently would leave the
- * lead with an account they cannot hand off, so it is shown here even
- * though no screenshot covers this moment.
+ * returns the generated password **once**, on that response only, and never
+ * emails it. Dropping it silently would leave a lead with an account they
+ * cannot hand over, so it is shown even though no screenshot covers it.
  *
- * `prefill` is this same wizard reached from a registration request instead
- * of a blank form: the fields simply start filled in with what the
- * registrant already gave, still editable, in case a lead needs to correct
- * a typo before assigning a role. `onCreate` is still what actually submits,
- * so the caller decides whether that means `POST /auth/users/` or approving
- * the request; this component only decides what to ask and what to show
- * back.
- *
- * Rendered through a portal into `document.body`, not in place. This is a
- * plain `position: fixed` overlay, not `Modal.tsx`'s `<dialog>` — a real
- * `<dialog>` promotes itself to the browser's top layer regardless of where
- * it sits in the tree, but a `fixed` div is still a descendant of wherever
- * it is mounted, and any ancestor between it and `<body>` is free to affect
- * it. Screens render this from deep inside `AppShell`'s grid, and that grid
- * was enough to squeeze the overlay into the content column instead of the
- * full viewport. Mounting at `<body>` sidesteps the question of which
- * ancestor was responsible, the same way `Modal.tsx` does by construction.
+ * `prefill` is this same wizard reached from a registration request rather
+ * than a blank form. The fields start filled with what the registrant gave,
+ * still editable so a lead can fix a typo, and `onCreate` decides whether
+ * that means creating an account or approving the request.
  */
 
 import { useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
-import { X } from 'lucide-react'
 import * as catalogApi from '@/api/catalog'
-import { Badge, Button, Select, TextField } from '@/components'
+import { Alert, Badge, Button, Modal, Select, TextField } from '@/components'
 import { toApiError, type ApiError } from '@/api/errors'
-import type { RegistrationRequest, RoleInfo } from '@/api/types'
+import type { RegistrationRequest, RoleInfo, UserAdmin, UserCreate } from '@/api/types'
 
-/** What either creation path returns: the account, and its password once. */
-interface Created {
-  user: { first_name: string; email: string }
+/**
+ * What either creation path returns: the account, and its password once.
+ *
+ * Both `POST /auth/users/` and the registration approve endpoint answer with
+ * this shape — `CreatedUser` and `ApprovedRegistration` — so the wizard is
+ * written against the part they share rather than against either one.
+ */
+export interface Created {
+  user: UserAdmin
   password: string | null
 }
 
@@ -63,15 +59,13 @@ interface AddUserModalProps {
   onClose: () => void
   /** Pre-fills name, email and phone, and skips straight to the role step. */
   prefill?: RegistrationRequest
-  onCreate: (input: {
-    first_name: string
-    last_name: string
-    email: string
-    role: string
-    warehouse?: number
-    school?: number
-    must_change_password: true
-  }) => Promise<Created>
+  /*
+    Typed as the API's own `UserCreate`, not an inline literal. The literal
+    said `role: string` where the generated type is a union of the five
+    roles, so the two were "different types with the same name" and neither
+    call site could satisfy both.
+  */
+  onCreate: (input: UserCreate) => Promise<Created>
 }
 
 interface Draft {
@@ -83,10 +77,17 @@ interface Draft {
   site: string
 }
 
-const EMPTY: Draft = { firstName: '', lastName: '', email: '', phoneNumber: '', role: '', site: '' }
+const EMPTY: Draft = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  phoneNumber: '',
+  role: '',
+  site: '',
+}
 
 export function AddUserModal({ roles, onClose, onCreate, prefill }: AddUserModalProps) {
-  const [step, setStep] = useState<1 | 3>(1)
+  const [step, setStep] = useState<1 | 2>(1)
   const [draft, setDraft] = useState<Draft>(
     prefill
       ? {
@@ -116,7 +117,12 @@ export function AddUserModal({ roles, onClose, onCreate, prefill }: AddUserModal
     enabled: siteKind === 'school',
   })
 
-  const sites = siteKind === 'warehouse' ? warehouses?.results : siteKind === 'school' ? schools?.results : []
+  const sites =
+    siteKind === 'warehouse'
+      ? warehouses?.results
+      : siteKind === 'school'
+        ? schools?.results
+        : []
 
   const complete =
     draft.firstName.trim() &&
@@ -138,200 +144,213 @@ export function AddUserModal({ roles, onClose, onCreate, prefill }: AddUserModal
         first_name: draft.firstName,
         last_name: draft.lastName,
         email: draft.email,
-        role: role.value,
+        /*
+          Sent, at last. The form collected a phone number, echoed it back on
+          the review step and then dropped it — the server has carried
+          `phone_number` on User and in UserCreateSerializer all along, so a
+          lead was confirming a detail that never reached the account.
+        */
+        ...(draft.phoneNumber.trim() ? { phone_number: draft.phoneNumber.trim() } : {}),
+        role: role.value as UserCreate['role'],
         warehouse: siteKind === 'warehouse' && draft.site ? Number(draft.site) : undefined,
         school: siteKind === 'school' && draft.site ? Number(draft.site) : undefined,
         must_change_password: true,
       })
       setPending(false)
-      if (result.password) {
-        setCreated(result)
-      } else {
-        onClose()
-      }
-    } catch (cause) {
-      setError(toApiError(cause))
+      if (result.password) setCreated(result)
+      else onClose()
+    } catch (caught) {
+      setError(toApiError(caught))
       setPending(false)
     }
   }
 
   const siteName = sites?.find((entry) => String(entry.id) === draft.site)?.name
 
-  return createPortal(
-    <div className="adduser-overlay" role="presentation" onClick={onClose}>
-      <div
-        className="adduser-card"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="add-user-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <header className="adduser__head">
-          <h2 className="adduser__title" id="add-user-title">
-            Add New User
-          </h2>
-          <span className="modal__step">Step {step} of 3</span>
-          <button type="button" className="adduser__close" onClick={onClose} aria-label="Close">
-            <X size={18} aria-hidden />
-          </button>
-        </header>
+  /* The password screen is an outcome, not a step, so it says so. */
+  const title = created ? 'Account created' : 'Add New User'
+  const subtitle = created ? undefined : `Step ${step} of 2`
 
-        <div className="modal__progress">
-          <span className={`modal__progress-bar${step >= 1 ? ' modal__progress-bar--done' : ''}`} />
-          <span className={`modal__progress-bar${step >= 3 ? ' modal__progress-bar--done' : ''}`} />
-          <span className="modal__progress-bar" />
+  return (
+    <Modal
+      open
+      size="md"
+      title={title}
+      subtitle={subtitle}
+      onClose={onClose}
+      footer={
+        created ? (
+          <Button onClick={onClose}>Done</Button>
+        ) : step === 1 ? (
+          <>
+            <Button variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button disabled={!complete} onClick={() => setStep(2)}>
+              Review
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="secondary" onClick={() => setStep(1)} disabled={pending}>
+              Back
+            </Button>
+            <Button onClick={() => void handleConfirm()} disabled={pending}>
+              {pending ? 'Creating…' : 'Confirm'}
+            </Button>
+          </>
+        )
+      }
+    >
+      {!created && (
+        <div className="wizard__progress" aria-hidden>
+          <span className="wizard__progress-bar wizard__progress-bar--done" />
+          <span
+            className={`wizard__progress-bar${step >= 2 ? ' wizard__progress-bar--done' : ''}`}
+          />
         </div>
+      )}
 
-        {step === 1 && (
-          <div className="adduser__body">
-            <div className="modal__grid">
-              <TextField
-                label="First Name"
-                required
-                value={draft.firstName}
-                onChange={(event) => update('firstName', event.target.value)}
-              />
-              <TextField
-                label="Last Name"
-                required
-                value={draft.lastName}
-                onChange={(event) => update('lastName', event.target.value)}
-              />
-            </div>
-
+      {step === 1 && !created && (
+        <>
+          <div className="wizard__grid">
             <TextField
-              label="Email Address"
-              type="email"
+              label="First Name"
               required
-              value={draft.email}
-              onChange={(event) => update('email', event.target.value)}
+              value={draft.firstName}
+              onChange={(event) => update('firstName', event.target.value)}
             />
-
             <TextField
-              label="Phone Number"
-              type="tel"
-              value={draft.phoneNumber}
-              onChange={(event) => update('phoneNumber', event.target.value)}
+              label="Last Name"
+              required
+              value={draft.lastName}
+              onChange={(event) => update('lastName', event.target.value)}
             />
+          </div>
 
+          <TextField
+            label="Email Address"
+            type="email"
+            required
+            value={draft.email}
+            onChange={(event) => update('email', event.target.value)}
+          />
+
+          <TextField
+            label="Phone Number"
+            type="tel"
+            value={draft.phoneNumber}
+            onChange={(event) => update('phoneNumber', event.target.value)}
+          />
+
+          <Select
+            label="Role"
+            required
+            value={draft.role}
+            onChange={(event) => {
+              update('role', event.target.value)
+              update('site', '')
+            }}
+          >
+            <option value="" disabled>
+              Select a role
+            </option>
+            {roles.map((entry) => (
+              <option key={entry.value} value={entry.value}>
+                {entry.label}
+              </option>
+            ))}
+          </Select>
+
+          {siteKind && (
             <Select
-              label="Role"
+              label="Assigned Site"
               required
-              value={draft.role}
-              onChange={(event) => {
-                update('role', event.target.value)
-                update('site', '')
-              }}
+              value={draft.site}
+              onChange={(event) => update('site', event.target.value)}
             >
               <option value="" disabled>
-                Select a role
+                Select a {siteKind}
               </option>
-              {roles.map((entry) => (
-                <option key={entry.value} value={entry.value}>
-                  {entry.label}
+              {(sites ?? []).map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.name}
                 </option>
               ))}
             </Select>
+          )}
 
-            {siteKind && (
-              <Select
-                label="Assigned Site"
-                required
-                value={draft.site}
-                onChange={(event) => update('site', event.target.value)}
-              >
-                <option value="" disabled>
-                  Select a {siteKind}
-                </option>
-                {(sites ?? []).map((entry) => (
-                  <option key={entry.id} value={entry.id}>
-                    {entry.name}
-                  </option>
-                ))}
-              </Select>
-            )}
-
-            {role && (
-              <div className="modal__permissions-preview">
-                <p className="modal__permissions-title">Role Permissions Preview</p>
-                <p className="modal__permissions-summary">{role.summary}</p>
-              </div>
-            )}
-
-            <div className="modal__actions">
-              <Button variant="secondary" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button disabled={!complete} onClick={() => setStep(3)}>
-                Confirm
-              </Button>
+          {role && (
+            <div className="wizard__preview">
+              <p className="wizard__preview-title">What this role may do</p>
+              <p className="wizard__preview-summary">{role.summary}</p>
             </div>
-          </div>
-        )}
+          )}
+        </>
+      )}
 
-        {created && (
-          <div className="adduser__body">
-            <div className="modal__review">
-              <div className="modal__review-row">
-                <span className="modal__review-label">One-time password</span>
-                <span className="modal__review-value modal__review-value--accent modal__review-value--mono">
-                  {created.password}
-                </span>
-              </div>
+      {step === 2 && role && !created && (
+        <>
+          {error && (
+            <Alert tone="error">
+              <strong>The account was not created.</strong> {error.message}
+            </Alert>
+          )}
+
+          <dl className="wizard__review">
+            <div>
+              <dt>Full name</dt>
+              <dd className="wizard__review-value--accent">
+                {draft.firstName} {draft.lastName}
+              </dd>
             </div>
-            <p className="modal__body-note">
-              Shown once — pass this to {created.user.first_name} yourself. It is not emailed and
-              cannot be shown again; use "set password" on their account if it is lost.
-            </p>
-            <div className="modal__actions">
-              <Button onClick={onClose}>Done</Button>
+            <div>
+              <dt>Email address</dt>
+              <dd>{draft.email}</dd>
             </div>
-          </div>
-        )}
-
-        {step === 3 && role && !created && (
-          <div className="adduser__body">
-            {error && <p className="modal__error">{error.message}</p>}
-
-            <div className="modal__review">
-              <div className="modal__review-row">
-                <span className="modal__review-label">Full Name</span>
-                <span className="modal__review-value modal__review-value--accent">
-                  {draft.firstName} {draft.lastName}
-                </span>
-              </div>
-              <div className="modal__review-row">
-                <span className="modal__review-label">Email Address</span>
-                <span className="modal__review-value">{draft.email}</span>
-              </div>
-              <div className="modal__review-row">
-                <span className="modal__review-label">Phone Number</span>
-                <span className="modal__review-value">{draft.phoneNumber || '—'}</span>
-              </div>
-              <div className="modal__review-row">
-                <span className="modal__review-label">System Role</span>
+            <div>
+              <dt>Phone number</dt>
+              <dd>{draft.phoneNumber || '—'}</dd>
+            </div>
+            <div>
+              <dt>System role</dt>
+              <dd>
                 <Badge tone="info">{role.label}</Badge>
+              </dd>
+            </div>
+            {siteKind && (
+              <div>
+                <dt>Assigned site</dt>
+                <dd>{siteName ?? '—'}</dd>
               </div>
-              {siteKind && (
-                <div className="modal__review-row">
-                  <span className="modal__review-label">Assigned Site</span>
-                  <span className="modal__review-value">{siteName ?? '—'}</span>
-                </div>
-              )}
-            </div>
+            )}
+          </dl>
+        </>
+      )}
 
-            <div className="modal__actions">
-              <Button variant="secondary" onClick={() => setStep(1)} disabled={pending}>
-                Back
-              </Button>
-              <Button onClick={() => void handleConfirm()} disabled={pending}>
-                {pending ? 'Creating…' : 'Confirm'}
-              </Button>
+      {created && (
+        <>
+          {/*
+            The one moment this password exists anywhere a person can read
+            it. Said plainly, because closing this dialog is irreversible in
+            a way nothing else on the screen is.
+          */}
+          <Alert tone="warning">
+            <strong>Shown once.</strong> Pass this to {created.user.first_name}{' '}
+            yourself — it is not emailed and cannot be shown again. If it is
+            lost, set a new one on their account.
+          </Alert>
+
+          <dl className="wizard__review">
+            <div>
+              <dt>One-time password</dt>
+              <dd className="wizard__review-value--accent wizard__review-value--mono">
+                {created.password}
+              </dd>
             </div>
-          </div>
-        )}
-      </div>
-    </div>,
-    document.body,
+          </dl>
+        </>
+      )}
+    </Modal>
   )
 }

@@ -39,9 +39,21 @@ export const http = axios.create({
 // Session death, announced rather than acted on
 // ---------------------------------------------------------------------------
 
+/**
+ * A session ending carries *why*, because two reasons need different words.
+ * An ordinary expiry is nobody's doing; being superseded means somebody else
+ * signed in to this account, and the person at this keyboard needs telling
+ * that rather than a shrug about their session.
+ */
+export type SessionEndReason = 'expired' | 'superseded'
+
+/** Told why the session ended. */
+type SessionListener = (reason: SessionEndReason) => void
+
+/** Told only that the server did not answer — there is no "why" to pass. */
 type Listener = () => void
 
-const sessionExpiredListeners = new Set<Listener>()
+const sessionExpiredListeners = new Set<SessionListener>()
 const serverUnreachableListeners = new Set<Listener>()
 
 /**
@@ -49,7 +61,7 @@ const serverUnreachableListeners = new Set<Listener>()
  * case where somebody genuinely has to sign in again. The auth feature
  * subscribes and handles the redirect; `api/` stays unaware routes exist.
  */
-export function onSessionExpired(listener: Listener): () => void {
+export function onSessionExpired(listener: SessionListener): () => void {
   sessionExpiredListeners.add(listener)
   return () => sessionExpiredListeners.delete(listener)
 }
@@ -67,9 +79,9 @@ export function onServerUnreachable(listener: Listener): () => void {
   return () => serverUnreachableListeners.delete(listener)
 }
 
-function announceSessionExpired(): void {
+function announceSessionExpired(reason: SessionEndReason = 'expired'): void {
   tokens.clear()
-  for (const listener of sessionExpiredListeners) listener()
+  for (const listener of sessionExpiredListeners) listener(reason)
 }
 
 function announceServerUnreachable(): void {
@@ -86,17 +98,32 @@ function announceServerUnreachable(): void {
  * in an English sentence. `code` is the contract; `detail` is prose that may
  * change.
  *
- *   token_expired      routine. Thirty-minute tokens expire all day. Refresh.
- *   token_invalid      never ours, or tampered with. This will never work.
- *   not_authenticated  there was no session to begin with.
+ *   token_expired       routine. Thirty-minute tokens expire all day. Refresh.
+ *   token_invalid       never ours, or tampered with. This will never work.
+ *   not_authenticated   there was no session to begin with.
+ *   session_superseded  somebody signed in to this account somewhere else.
+ *                       Retrying and refreshing are both pointless — the
+ *                       refresh token was retired at the same instant.
  */
-type TokenFailure = 'token_expired' | 'token_invalid' | 'not_authenticated' | 'unknown'
+type TokenFailure =
+  | 'token_expired'
+  | 'token_invalid'
+  | 'not_authenticated'
+  | 'session_superseded'
+  | 'unknown'
+
+const TOKEN_FAILURES = new Set([
+  'token_expired',
+  'token_invalid',
+  'not_authenticated',
+  'session_superseded',
+])
 
 function tokenFailureOf(error: unknown): TokenFailure {
   if (!axios.isAxiosError(error)) return 'unknown'
   const code = (error.response?.data as { code?: unknown } | undefined)?.code
-  return code === 'token_expired' || code === 'token_invalid' || code === 'not_authenticated'
-    ? code
+  return typeof code === 'string' && TOKEN_FAILURES.has(code)
+    ? (code as TokenFailure)
     : 'unknown'
 }
 
@@ -194,6 +221,17 @@ http.interceptors.response.use(
      */
     if (failure === 'token_invalid') {
       announceSessionExpired()
+      throw error
+    }
+
+    /*
+     * Somebody signed in to this account elsewhere. Attempting a refresh
+     * would be a wasted round trip that can only fail — the refresh token
+     * was retired at the same instant the epoch moved — and would end with
+     * the generic "session expired", which is not what happened.
+     */
+    if (failure === 'session_superseded') {
+      announceSessionExpired('superseded')
       throw error
     }
 

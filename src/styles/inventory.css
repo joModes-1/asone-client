@@ -1,0 +1,1140 @@
+/**
+ * Inventory & Products — Inventory Overview, Create SKU, SKU Details.
+ *
+ * No Figma frame for these yet, same situation `locations.css` documents for
+ * Schools/Warehouses/Tailoring Centers — this follows the same card and form
+ * shapes established there (`.schools-filter-card`, `.schools-form-*`)
+ * rather than inventing new ones for what is the same kind of screen.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Page head
+ * ------------------------------------------------------------------------ */
+
+/* The title override that used to live here is gone: this screen now takes
+   the shared green `.page-head__title` like every other destination. */
+
+/* ---------------------------------------------------------------------------
+ * Filter bar
+ * ------------------------------------------------------------------------ */
+
+/*
+ * Wraps rather than scrolling.
+ *
+ * It was `nowrap` with `overflow-x: auto` and the scrollbar hidden, which
+ * meant that whenever the pills were wider than the card — at 1440px they
+ * are, by about 30px — "Low Stock Only" was simply cut off the right-hand
+ * edge with nothing on screen to say it was there or that the bar scrolled.
+ *
+ * A filter you cannot see is a filter you do not use, so it wraps to a
+ * second line instead. The table below still scrolls sideways, because a
+ * table genuinely is one wide object; a row of independent controls is not.
+ */
+.inventory-filter-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+}
+
+.inventory-filter__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 175px;
+  min-width: 140px;
+  height: 38px;
+  padding: 0 10px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  flex-shrink: 0;
+  transition: all 120ms ease;
+}
+
+.inventory-filter__search-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.inventory-filter__search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: var(--text-small);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.inventory-filter__search input::placeholder {
+  color: var(--text-muted);
+}
+
+.inventory-filter__search:focus-within {
+  background: var(--surface);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--border-focus) 18%, transparent);
+}
+
+.inventory-filter__pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: all 120ms ease;
+  flex-shrink: 0;
+}
+
+.inventory-filter__pill:hover {
+  border-color: var(--border-strong);
+}
+
+.inventory-filter__pill:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--border-focus) 18%, transparent);
+}
+
+.inventory-filter__pill-label {
+  color: var(--text-muted);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+}
+
+.inventory-filter__pill-value {
+  color: var(--text-primary);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+.inventory-filter__pill .inventory-filter__chevron {
+  color: var(--text-muted);
+  pointer-events: none;
+  margin-left: 2px;
+  flex-shrink: 0;
+}
+
+.inventory-filter__pill-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  z-index: 1;
+}
+
+.inventory-filter__divider {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.inventory-filter__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.inventory-filter__toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.inventory-filter__toggle-track {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  transition: background-color 120ms ease;
+  flex-shrink: 0;
+}
+
+.inventory-filter__toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: transform 120ms ease;
+}
+
+.inventory-filter__toggle input:checked + .inventory-filter__toggle-track {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.inventory-filter__toggle input:checked + .inventory-filter__toggle-track::after {
+  transform: translateX(14px);
+}
+
+.inventory-filter__toggle-text {
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Layout — table plus the sliding SKU detail panel
+ * ------------------------------------------------------------------------ */
+
+.inventory-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+.inventory-layout--split {
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 20px;
+  align-items: start;
+}
+
+.inventory-layout__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inventory-filter-card--compact {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  flex-wrap: nowrap;
+}
+
+.inventory-filter__search--compact {
+  flex: 0 0 240px;
+  min-width: 180px;
+}
+
+.inventory-filter-card--compact .inventory-filter__select {
+  min-width: 180px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Inventory table
+ * ------------------------------------------------------------------------ */
+
+/*
+ * The card scrolls; the page never does.
+ *
+ * `overflow-x: auto` was already here and did nothing, because the table
+ * inside is `width: 100%` — a table that is always exactly as wide as its
+ * container has nothing to scroll. Thirteen columns therefore compressed
+ * instead: every cell wrapped onto three lines and Status, the last one,
+ * was squeezed off the right-hand edge.
+ *
+ * The floor on `.inventory-table` below is what turns compression back into
+ * scrolling. `overscroll-behavior-x: contain` keeps a sideways swipe or
+ * trackpad gesture inside the table rather than triggering the browser's
+ * back-navigation once it reaches the end.
+ */
+.inventory-table-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+/*
+ * The table is a `.ledger`, like every other table in the app.
+ *
+ * It used to restate `.ledger`'s typography with different values — 16.8px
+ * against 15.6px, semibold headers against bold, 16px padding against 12px —
+ * so the same kind of table read a size larger here than on Orders or
+ * Shipments. Those rules are gone; what is left is only what is genuinely
+ * this table's own.
+ */
+.inventory-table {
+  /*
+   * Wide enough for all thirteen columns to stay readable. Below this the
+   * card scrolls sideways; above it the table fills the space as before.
+   */
+  min-width: 1240px;
+}
+
+.inventory-table__row--selected,
+.inventory-table__row--selected td {
+  background-color: var(--accent-subtle);
+}
+
+.inventory-table__td-code {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The row whose panel is open reads as the current one rather than as
+   another link waiting to be followed. */
+.inventory-table__td-code--selected {
+  color: var(--accent);
+  font-weight: var(--weight-bold);
+}
+
+.inventory-table__td-name {
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.inventory-table__td-muted {
+  color: var(--text-secondary);
+}
+
+/* The compact view drops seven columns, so it needs no floor. */
+
+/* The compact view drops seven columns, so it needs no floor — forcing one
+   would make it scroll sideways in the narrow space beside the panel. */
+.inventory-table--compact { min-width: 0; }
+
+.inventory-table--compact .inventory-table__td-muted {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-table__th-num,
+.inventory-table__td-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * `td.` prefixed, not just the class alone: `.inventory-table td` (an
+ * element plus a class) otherwise outranks a single-class selector on
+ * specificity regardless of source order, and silently wins the `color`
+ * property — the row still filters correctly under Low Stock Only, it just
+ * never actually turns the warning colour on.
+ */
+.inventory-table td.inventory-table__td-low {
+  color: var(--warning);
+  font-weight: var(--weight-bold);
+}
+
+/* ---------------------------------------------------------------------------
+ * SKU detail panel (Image 2)
+ * ------------------------------------------------------------------------ */
+
+.sku-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.sku-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.sku-panel__eyebrow {
+  margin: 0;
+  font-size: var(--text-overline);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.sku-panel__title {
+  margin: 2px 0 0 0;
+  font-size: var(--text-h2);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.sku-panel__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.sku-panel__close:hover {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+
+.sku-panel__garment-card {
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.sku-panel__garment-name {
+  margin: 0;
+  /* Matches the Garment column in the table. */
+  font-size: var(--text-small);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.sku-panel__description {
+  margin: 4px 0 14px 0;
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.sku-panel__specs-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sku-panel__spec-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-small);
+}
+
+.sku-panel__spec-label {
+  color: var(--text-secondary);
+  font-weight: var(--weight-regular);
+}
+
+.sku-panel__spec-value {
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+}
+
+.sku-panel__section-header {
+  margin: 2px 0 0 0;
+  font-size: var(--text-overline);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.sku-panel__stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.sku-panel__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.sku-panel__stat-label {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  font-weight: var(--weight-medium);
+}
+
+.sku-panel__stat-value {
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.sku-panel__stat-value--accent {
+  color: var(--accent);
+}
+
+.sku-panel__value-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.sku-panel__value-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sku-panel__value-label {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+.sku-panel__value-rate {
+  font-size: var(--text-overline);
+  color: var(--text-muted);
+  font-weight: var(--weight-medium);
+}
+
+.sku-panel__value-amount {
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.sku-panel__location-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sku-panel__location-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-small);
+}
+
+.sku-panel__location-name {
+  color: var(--text-secondary);
+}
+
+.sku-panel__location-qty {
+  color: var(--text-primary);
+  font-weight: var(--weight-bold);
+}
+
+.sku-panel__movement-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.sku-panel__movement-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sku-panel__movement-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--surface-sunken);
+}
+
+.sku-panel__movement-item:last-child {
+  border-bottom: none;
+}
+
+.sku-panel__movement-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sku-panel__movement-type {
+  margin: 0;
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  font-size: var(--text-small);
+}
+
+.sku-panel__movement-meta {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+}
+
+.sku-panel__movement-qty {
+  font-weight: var(--weight-bold);
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.sku-panel__movement-qty--in {
+  color: var(--success);
+}
+
+.sku-panel__movement-qty--out {
+  color: var(--text-primary);
+}
+
+.sku-panel__footer {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.sku-panel__btn-edit {
+  flex: 1;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border: none;
+  font-family: inherit;
+  font-size: var(--text-small);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.sku-panel__btn-edit:hover {
+  background: var(--accent-hover);
+}
+
+/* An `<a>` for the role that can use it, a disabled `<button>` for the rest
+   — so these need centring as a link as well as sizing as a button. */
+.sku-panel__btn-adjust {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  flex: 1;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  font-family: inherit;
+  font-size: var(--text-small);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.sku-panel__btn-adjust:hover {
+  background: var(--surface-sunken);
+  border-color: var(--border-strong);
+}
+
+.sku-panel__btn-edit:disabled,
+.sku-panel__btn-adjust:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.sku-panel__btn-edit:disabled:hover {
+  background: var(--accent);
+}
+
+.sku-panel__btn-adjust:disabled:hover {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.sku-panel__empty {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+ * Create SKU Modal styling
+ * ------------------------------------------------------------------------ */
+
+/*
+ * The dialogue chrome is the shared `Modal`'s, not this screen's.
+ *
+ * What stood here was twenty-odd `!important` rules re-skinning that Modal
+ * from the outside — its radius, shadow, width, head padding, title colour
+ * and size, subtitle, close button and foot. The result was one dialogue in
+ * the app that looked unlike every other dialogue in the app, and any change
+ * to the shared Modal silently stopped applying to it.
+ *
+ * The form inside is still laid out as the reference design shows it —
+ * section headings, labels above fields, the level pills, the preview box.
+ * Only the frame is shared again.
+ */
+
+.create-sku-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.create-sku-form__section-title {
+  font-size: var(--text-overline);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 2px 0 0 0;
+}
+
+.create-sku-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.create-sku-form__label {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+/*
+ * The text field and the select are the system's `.input`, not a second
+ * control that looks nearly like it. They used to set their own height,
+ * padding, radius, font size, border and focus ring — so a field in this one
+ * dialogue was a different size and shape from a field anywhere else.
+ *
+ * What is left here is only what a select genuinely needs on top: room for
+ * the chevron, and room for the colour swatch on the one that has one.
+ */
+.create-sku-form__select {
+  padding-right: var(--space-6);
+  appearance: none;
+  cursor: pointer;
+}
+
+.create-sku-form__select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Room for the swatch dot sitting inside the field. Specific enough to beat
+   `.input`'s own padding without `!important`. */
+.input.create-sku-form__select--with-swatch {
+  padding-left: var(--space-6);
+}
+
+.create-sku-form__chevron {
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+  color: var(--text-muted);
+}
+
+.create-sku-form__row-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.create-sku-form__radio-group {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.create-sku-form__radio-pill {
+  flex: 1;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 120ms ease;
+}
+
+.create-sku-form__radio-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: all 120ms ease;
+}
+
+.create-sku-form__radio-pill--active {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.create-sku-form__radio-pill--active .create-sku-form__radio-dot {
+  border-color: var(--accent);
+}
+
+.create-sku-form__radio-pill--active .create-sku-form__radio-dot::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.create-sku-form__preview-box {
+  background: var(--accent-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.create-sku-form__preview-label {
+  font-size: var(--text-overline);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0;
+}
+
+.create-sku-form__preview-code {
+  font-size: var(--text-h2);
+  font-weight: var(--weight-bold);
+  color: var(--accent);
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.create-sku-modal__footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.create-sku-modal__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.create-sku-modal__toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.create-sku-modal__toggle-track {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+  transition: background-color 150ms ease;
+  flex-shrink: 0;
+}
+
+.create-sku-modal__toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: transform 150ms ease;
+}
+
+.create-sku-modal__toggle input:checked + .create-sku-modal__toggle-track {
+  background: var(--accent);
+}
+
+.create-sku-modal__toggle input:checked + .create-sku-modal__toggle-track::after {
+  transform: translateX(16px);
+}
+
+.create-sku-modal__toggle-label {
+  font-size: var(--text-small);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.create-sku-modal__btn-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.create-sku-modal__btn-actions button {
+  height: 38px;
+  border-radius: var(--radius-md);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-small);
+  padding: 0 18px;
+}
+
+@media (max-width: 900px) {
+  .inventory-layout--split {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The reason two buttons above are dead, said on the page rather than in a
+   `title` nobody on a touch screen can reach. */
+.sku-panel__footnote {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+ * Garment colour picker
+ *
+ * The dots set the colour *name* on the garment — they are not a separate
+ * field. See domain/garmentColours.ts for the list they are drawn from.
+ * ------------------------------------------------------------------------ */
+
+.swatch-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.swatch-picker__dot {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* A ring rather than a tick: a tick would have to be light on dark and dark
+   on light, and the ring reads the same on white and on black. */
+.swatch-picker__dot--on {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+}
+
+.swatch-picker__preview {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+
+/* Any colour the presets do not cover — a real hue picker, borrowed from the
+   operating system. The native input is hidden behind a dot the same size as
+   the presets so the row reads as one set of choices. */
+.swatch-picker__custom {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px dashed var(--border-strong, var(--border));
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.swatch-picker__custom input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Price and edit sit together at the end of a garment row. */
+.garment-row__actions {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+/*
+ * Eight columns, two of them narrow and right-aligned — the price ran
+ * straight into the status badge beside it. A floor on the numeric columns
+ * and a wider gutter between every pair gives each one room of its own.
+ */
+.garments-table th,
+.garments-table td {
+  padding-right: var(--space-5);
+}
+
+/* The action column is headed rather than blank, and its buttons sit under
+   that heading — left, not pushed to the far edge away from it. */
+.garments-table th:last-child,
+.garments-table td:last-child {
+  padding-right: var(--space-3);
+  text-align: left;
+}
+
+.garments-table .ledger__num {
+  min-width: 110px;
+}
+
+/*
+ * Price today, then Status.
+ *
+ * The price is right-aligned and the status badge left-aligned, so the two
+ * meet in the middle and read as one group however wide the gutter is. The
+ * fix is a gap on both sides of the seam, not a wider column: the number
+ * ends well before the cell does, and the badge starts well after.
+ */
+.garments-table th:nth-child(6),
+.garments-table td:nth-child(6) {
+  padding-right: var(--space-6);
+}
+
+.garments-table th:nth-child(7),
+.garments-table td:nth-child(7) {
+  padding-left: var(--space-5);
+}
+
+/* ---------------------------------------------------------------------------
+ * Stock History — the ledger (F48)
+ * ------------------------------------------------------------------------ */
+
+/*
+ * Ten columns, which is more than any other table in the app and more than
+ * fits a laptop. It slides, inside the shared `.table-scroll` every wide
+ * table uses — the columns are not dropped and none of them is optional: an
+ * audit trail that hides the document or the person who posted it has stopped
+ * being one.
+ *
+ * `.ledger td` already truncates with an ellipsis rather than wrapping, so
+ * nothing here is on two lines. What is set below is only the width each
+ * column needs to say its piece before that ellipsis appears.
+ */
+.ledger--history {
+  /* Wider than the viewport on purpose. Without this the browser compresses
+     eleven columns to fit and every one of them ellipses at once. */
+  min-width: 1220px;
+}
+
+/* Txn #, SKU — fixed-width codes, so they never dictate the layout. */
+.ledger--history th:nth-child(1),
+.ledger--history td:nth-child(1),
+.ledger--history th:nth-child(3),
+.ledger--history td:nth-child(3) {
+  width: 110px;
+}
+
+/* Description takes the slack: it is the only column with prose in it. */
+.ledger--history th:nth-child(4),
+.ledger--history td:nth-child(4) {
+  min-width: 180px;
+}
+
+/*
+ * Qty and Value sit next to each other and are both right-aligned, so
+ * without a gutter between them "+570" and "UGX 10,260,000" run together
+ * into one number. Same seam, same fix, as the garments table above.
+ */
+.ledger--history th:nth-child(8),
+.ledger--history td:nth-child(8) {
+  min-width: 90px;
+  padding-right: var(--space-5);
+}
+
+.ledger--history th:nth-child(9),
+.ledger--history td:nth-child(9) {
+  min-width: 130px;
+  padding-right: var(--space-5);
+}
+
+/* Document carries its kind as a suffix — "RC-100002 · Receipt" — so it needs
+   room for both before the ellipsis. */
+.ledger--history th:nth-child(10),
+.ledger--history td:nth-child(10) {
+  min-width: 170px;
+}
+
+/* ---------------------------------------------------------------------------
+ * A stated fact inside a modal form
+ * ------------------------------------------------------------------------ */
+
+/*
+ * `.modal-form__fact` was used by Edit SKU and Reprice and **had no rule at
+ * all**. Two spans in a paragraph with nothing laying them out, so the label
+ * and the value rendered glued together: "Price todayUGX 30,000", "Garment
+ * and sizeBlue Tunic (PS) · 8".
+ *
+ * Same shape as `.fact-rows > div` in receiving.css, which is the established
+ * way this app states a read-only figure beside its label — label muted on
+ * the left, value emphasised on the right, meeting in the middle with a gap
+ * that cannot close. Not a new pattern; the one that was missing.
+ */
+.modal-form__fact {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--table-rule);
+  font-size: var(--text-body);
+  color: var(--text-secondary);
+}
+
+/* The value half. `strong` covers Reprice, which already emphasises its own. */
+.modal-form__fact > :last-child {
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.modal-form__swatch-value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}

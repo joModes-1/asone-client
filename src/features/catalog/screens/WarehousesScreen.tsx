@@ -16,18 +16,27 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AppShell } from '@/features/shell/components/AppShell'
 import { useWarehouseFilter } from '@/features/shell/hooks/useWarehouseFilter'
-import { Pagination } from '@/components'
+import { Plus, Warehouse as WarehouseIcon } from 'lucide-react'
+import { Button, EmptyState, Pagination, SkeletonRows } from '@/components'
+import { can } from '@/domain/access'
+import { useAuth } from '@/features/auth/hooks/useAuth'
+import { useTailoringCenters } from '../hooks/useTailoringCenters'
+import { AddWarehouseModal } from '../components/AddSiteModal'
 import { paths } from '@/routes/paths'
 import { WarehouseCard } from '../components/WarehouseCard'
 import { useWarehouses, type WarehouseFilters } from '../hooks/useWarehouses'
 import { useWarehouseSummaries } from '../hooks/useWarehouseSummaries'
 import type { Warehouse } from '@/api/types'
+import { LIST_PAGE_SIZE } from '@/api/pageSize'
 
 const EMPTY_FILTERS: WarehouseFilters = { page: 1 }
-const PAGE_SIZE = 50
+const PAGE_SIZE = LIST_PAGE_SIZE
 
 export function WarehousesScreen() {
+  const { user } = useAuth()
+  const [adding, setAdding] = useState(false)
   const [filters, setFilters] = useState<WarehouseFilters>(EMPTY_FILTERS)
+  const { tailoringCenters } = useTailoringCenters({ page: 1 })
   const navigate = useNavigate()
   const warehouseFilter = useWarehouseFilter()
 
@@ -48,21 +57,37 @@ export function WarehousesScreen() {
   const pageCount = Math.max(Math.ceil(totalCount / PAGE_SIZE), 1)
 
   return (
-    <AppShell title="Warehouses">
-      <header className="page-head">
-        <h1 className="page-head__title">Warehouses</h1>
-        <p className="page-head__subtitle">
-          Centralized inventory tracking, regional tailoring centers, and distribution metrics.
-        </p>
+    <AppShell title="Warehouses" searchHint="warehouse">
+      <header className="page-head page-head--split">
+        <div>
+          <h1 className="page-head__title">Warehouses</h1>
+          <p className="page-head__subtitle">
+            Centralized inventory tracking, regional tailoring centers, and distribution metrics.
+          </p>
+        </div>
+
+        {/* Master data is the Table Updates column — the leads'. */}
+        {can(user, 'table_updates') && (
+          <Button onClick={() => setAdding(true)}>
+            <Plus size={16} aria-hidden />
+            Add warehouse
+          </Button>
+        )}
       </header>
 
       {isLoading ? (
-        <div className="skeleton-stack" aria-hidden>
-          <span className="skeleton" style={{ height: 160 }} />
-          <span className="skeleton" style={{ height: 160 }} />
-        </div>
+        <SkeletonRows rows={6} />
       ) : warehouses.length === 0 ? (
-        <p className="page-head__subtitle">No warehouses yet.</p>
+        <EmptyState
+          icon={WarehouseIcon}
+          title="No warehouses yet"
+          body="A warehouse holds stock and ships to the schools around it. Add the first one to start receiving against production orders."
+          action={
+            can(user, 'table_updates')
+              ? { label: 'Add warehouse', onClick: () => setAdding(true) }
+              : undefined
+          }
+        />
       ) : (
         <>
           <div className="site-card-grid">
@@ -88,6 +113,12 @@ export function WarehousesScreen() {
           />
         </>
       )}
+
+      <AddWarehouseModal
+        open={adding}
+        onClose={() => setAdding(false)}
+        tailoringCenters={tailoringCenters}
+      />
     </AppShell>
   )
 }

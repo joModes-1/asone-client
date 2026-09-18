@@ -17,8 +17,21 @@ export const PREVIEW = {
    * readable — bars scaled against the largest stop meaning much past that.
    */
   warehouses: 5,
-  /** The design shows four. Beyond that a dashboard is nagging, not alerting. */
-  alerts: 4,
+  /**
+   * Every alert there can be.
+   *
+   * The design shows four and this followed it, which produced a permanent
+   * "+1 more needing attention" with nowhere to go: the list is not a feed
+   * of events but one row per *kind* of problem, and the server defines six
+   * — low stock, orders on hold, pending registrations, fillable
+   * backorders, unconfirmed deliveries, unreconciled receipts. Capping at
+   * four hid a real problem behind a line of text that was not a link,
+   * because there is no single screen to link to.
+   *
+   * Six one-line rows is a short panel, and the cap stays so that adding a
+   * seventh kind is noticed rather than silently dropped.
+   */
+  alerts: 6,
   /** The design shows five. */
   activity: 5,
 } as const

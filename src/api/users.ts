@@ -29,11 +29,20 @@ export interface CreatedUser {
   detail: string
 }
 
+/**
+ * The staff list, paged.
+ *
+ * `page_size` is sent, not left to the server. DRF's default is fifty, so
+ * without it the client's page size was a number it computed with and the
+ * server ignored: the footer said "Showing 1-15 of 12" and the page controls
+ * never appeared, because everything had come back on one page.
+ */
 export function list(params?: {
   role?: string
   is_active?: boolean
   search?: string
   page?: number
+  page_size?: number
 }) {
   return get<Page<UserAdmin>>('/auth/users/', params ?? undefined)
 }
@@ -97,7 +106,12 @@ export function activate(id: number) {
   return post<UserAdmin>(`/auth/users/${id}/activate/`, {})
 }
 
-/** Drop every one of that account's sessions, without changing the password. */
+/**
+ * Drop every one of that account's sessions, without changing the password.
+ *
+ * Returns how many were retired, which is worth showing: zero means they
+ * were not signed in anywhere, and that is a different answer from "done".
+ */
 export function signOut(id: number) {
-  return post<{ detail: string }>(`/auth/users/${id}/sign-out/`, {})
+  return post<{ sessions_retired: number }>(`/auth/users/${id}/sign-out/`, {})
 }

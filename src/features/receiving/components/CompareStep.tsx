@@ -29,6 +29,9 @@ import type { OutstandingRow } from '@/api/types'
 /** Received counts, keyed by SKU id. Held by the screen above. */
 export type CountsBySku = Record<number, number>
 
+/** Per-line discrepancy notes, keyed by SKU id. Also held above. */
+export type ReasonsBySku = Record<number, string>
+
 interface CompareStepProps {
   orderNumber: string
   tailoringCenterName: string
@@ -36,6 +39,9 @@ interface CompareStepProps {
   expected: OutstandingRow[]
   counts: CountsBySku
   onCountChange: (skuId: number, value: number) => void
+  /** Why each differing line differs, keyed by SKU id. */
+  reasons: ReasonsBySku
+  onReasonChange: (skuId: number, value: string) => void
   notes: string
   onNotesChange: (value: string) => void
   onFinalize: () => void
@@ -55,6 +61,8 @@ export function CompareStep({
   expected,
   counts,
   onCountChange,
+  reasons,
+  onReasonChange,
   notes,
   onNotesChange,
   onFinalize,
@@ -103,6 +111,7 @@ export function CompareStep({
                 <th className="ledger__num">Received (In)</th>
                 <th className="ledger__num">Diff</th>
                 <th className="ledger__num">Status</th>
+                <th>Reason</th>
               </tr>
             </thead>
             <tbody>
@@ -149,6 +158,28 @@ export function CompareStep({
                     </td>
                     <td className="ledger__num">
                       <span className={`chip chip--${STATUS_CLASS[status]}`}>{status}</span>
+                    </td>
+                    <td>
+                      {status === 'MATCHED' ? (
+                        /* Not a disabled input. A greyed-out box on every
+                           matched line reads as something you failed to
+                           fill in; a dash reads as nothing to say. */
+                        <span className="validation__no-reason">—</span>
+                      ) : (
+                        <input
+                          className="input validation__reason"
+                          type="text"
+                          /* The server column is 200 characters. Enforced
+                             here so a long note is stopped as it is typed
+                             rather than 400-ing after the whole van is
+                             keyed. */
+                          maxLength={200}
+                          placeholder="Damaged in transit, short shipment…"
+                          aria-label={`Reason for the difference on ${row.sku_number}`}
+                          value={reasons[row.sku] ?? ''}
+                          onChange={(event) => onReasonChange(row.sku, event.target.value)}
+                        />
+                      )}
                     </td>
                   </tr>
                 )

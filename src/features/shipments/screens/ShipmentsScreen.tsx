@@ -11,7 +11,7 @@
  */
 
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Truck } from 'lucide-react'
 import { Badge, EmptyState, Pagination, SkeletonRows, TabBar } from '@/components'
 import { todayISO } from '@/domain/dates'
@@ -67,7 +67,16 @@ export function ShipmentsScreen() {
       <header className="page-head">
         <h1 className="page-head__title">Shipping</h1>
         <p className="page-head__subtitle">
-          What has left the warehouses, and what the schools have confirmed.
+          {/*
+            Says where the *verb* is. "Despatch" and "Despatched" are one
+            letter apart, so looking for the action on the past-tense tab is
+            the obvious thing to do — and this tab is a read-only archive,
+            which leaves somebody who came here to send a van with nothing to
+            click and no idea why.
+          */}
+          What has left the warehouses, and what the schools have confirmed. To
+          send a van, use <Link to="/shipments">To Pick</Link> — vans are loaded
+          from there, not here.
         </p>
       </header>
 

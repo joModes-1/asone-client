@@ -12,8 +12,9 @@ import * as catalog from '@/api/catalog'
 import * as procurement from '@/api/procurement'
 import { snackbar } from '@/components'
 import { useSkuOptions } from '@/features/catalog/hooks/useSkuOptions'
+import { LIST_PAGE_SIZE } from '@/api/pageSize'
 
-const PAGE_SIZE = 15
+const PAGE_SIZE = LIST_PAGE_SIZE
 
 export interface ProductionFilters {
   /** Matches the PO number. Applied on the client — see the screen. */

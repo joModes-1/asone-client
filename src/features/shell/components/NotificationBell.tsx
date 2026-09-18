@@ -5,22 +5,29 @@
  * panel uses, so the badge and the panel can never disagree about the same
  * problem.
  *
- * The badge appears only when there is something unread — the design draws a
- * permanent "4", but a count of nothing should not be a red dot.
+ * The badge appears only when something is actually waiting — the design
+ * draws a permanent "4", but a count of nothing should not be a red dot.
+ *
+ * Nothing here says "unread", because nothing is read. The number counts
+ * conditions that are true right now, and it falls when the stock is
+ * replenished or the order is picked — not when somebody opens the panel.
+ * Calling that "unread" promises a badge that clears on a click, and this
+ * one never will. The dashboard calls the same set Needs Attention; so does
+ * this.
  *
  * Opening it shows the messages the server already wrote. It is a disclosure
  * rather than a route because notifications span several areas and there is
  * no single screen they all belong to.
  */
 
-import { Bell, CheckCircle2 } from 'lucide-react'
+import { AlertCircle, Bell, CheckCircle2 } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { alertPath, alertTone } from '@/domain/status'
 import { useNotifications } from '../hooks/useNotifications'
 
 export function NotificationBell() {
-  const { unreadCount, items, isLoading } = useNotifications()
+  const { alertCount, items, isLoading, isError } = useNotifications()
   const [open, setOpen] = useState(false)
   const container = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
@@ -33,7 +40,15 @@ export function NotificationBell() {
     const onPointerDown = (event: MouseEvent) => {
       if (!container.current?.contains(event.target as Node)) setOpen(false)
     }
-    const onKeyDown = (event: KeyboardEvent) => {
+    /*
+      `globalThis.KeyboardEvent`, not the `KeyboardEvent` imported from React
+      above. That import is React's synthetic event — right for the JSX
+      handler further down, wrong for `document.addEventListener`, which
+      hands out the DOM one. The two are different types with the same name,
+      and the file's own import was shadowing the one this line needs, so
+      `tsc -b` refused to build.
+    */
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false)
     }
 
@@ -45,8 +60,13 @@ export function NotificationBell() {
     }
   }, [open])
 
-  const label =
-    unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications, none unread'
+  const label = isError
+    ? 'Notifications, could not be checked'
+    : // The screen reader gets the real number, not the capped label: "99+
+      // waiting" is less useful spoken than "137 waiting".
+      alertCount > 0
+      ? `Notifications, ${alertCount} need attention`
+      : 'Notifications, nothing needs attention'
 
   return (
     <div className="bell" ref={container}>
@@ -58,7 +78,16 @@ export function NotificationBell() {
         onClick={() => setOpen((shown) => !shown)}
       >
         <Bell size={18} aria-hidden />
-        {unreadCount > 0 && <span className="topbar__badge">{unreadCount}</span>}
+        {/*
+          Capped at 99+. The badge is a small circle in the top bar, and a
+          three-digit number stretches it into an oval that pushes the help
+          button along with it. Past a hundred the exact figure has stopped
+          being useful anyway — the panel has the real count, and the list
+          scrolls.
+        */}
+        {!isError && alertCount > 0 && (
+          <span className="topbar__badge">{alertCount > 99 ? '99+' : alertCount}</span>
+        )}
       </button>
 
       {open && (
@@ -72,6 +101,17 @@ export function NotificationBell() {
 
           {isLoading ? (
             <p className="bell__empty">Loading…</p>
+          ) : isError ? (
+            /*
+              Not "nothing needs your attention". A poll that failed knows
+              nothing about the warehouse, and the quiet version of this bell
+              is indistinguishable from the all-clear version — so a server
+              that is down would have read as a warehouse with no problems.
+            */
+            <p className="bell__empty bell__empty--error">
+              <AlertCircle size={16} aria-hidden />
+              Couldn’t check for alerts. Retrying shortly.
+            </p>
           ) : items.length === 0 ? (
             <p className="bell__empty">
               <CheckCircle2 size={16} aria-hidden />

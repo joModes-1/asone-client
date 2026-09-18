@@ -78,10 +78,17 @@ export function NeedsAttention({ data }: { data: DashboardData }) {
         </ul>
       )}
 
-      {/* These rows span several reports, so the overflow is stated rather
-          than linked — there is no single place to send someone. */}
+      {/*
+        Should not happen: the cap is the number of alert kinds the server
+        defines, so every row fits. Kept as the signal that a new kind has
+        been added and this limit needs raising — the alternative was a
+        permanent "+1 more" pointing at nothing, since these rows span
+        several screens and there is no one place to send someone.
+      */}
       {!loading.alerts && alerts.length > shown.length && (
-        <p className="panel__more">+{alerts.length - shown.length} more needing attention</p>
+        <p className="panel__more">
+          +{alerts.length - shown.length} more — open the bell to see them all
+        </p>
       )}
     </Panel>
   )

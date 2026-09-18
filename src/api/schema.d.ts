@@ -1446,6 +1446,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard/school/notifications/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Notifications — the bell, for a school
+         * @description The school-side twin of `notifications/`, and the same contract: **derived, not stored**, so reading them does not clear the count. It falls when the parcel is confirmed or the invoice is paid.
+         *
+         *     A separate endpoint rather than a wider audience on the warehouse one, for the same reason the two dashboards are separate screens: a school holds no stock, so 'SKUs below minimum' is somebody else's building.
+         *
+         *     The rows are the school's own, and every one of them is something it can act on — a parcel to confirm, an invoice to pay, a backorder to expect. **Confirming a delivery is the school's alone**, which is why hiding the bell from them left the only role with a personal to-do list with nowhere to read it.
+         */
+        get: operations["dashboard_school_notifications_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard/summary/": {
         parameters: {
             query?: never;
@@ -3546,6 +3570,8 @@ export interface components {
             readonly id: number;
             /** @description For example "White Shirt". */
             name: string;
+            /** @description Short code used in SKU numbers, for example BTU. Filled in from the name if left blank, and never changed afterwards. */
+            readonly code: string;
             /**
              * @description Which price list this garment appears on.
              *
@@ -3556,6 +3582,8 @@ export interface components {
             school_level?: components["schemas"]["GarmentSchoolLevelEnum"];
             readonly school_level_display: string;
             colour?: string;
+            /** @description The swatch for this colour, as "#RRGGBB". Optional. */
+            colour_hex?: string;
             /** @description Inactive garments stay in reports but cannot be ordered. */
             is_active?: boolean;
             /**
@@ -4567,6 +4595,8 @@ export interface components {
             readonly id?: number;
             /** @description For example "White Shirt". */
             name?: string;
+            /** @description Short code used in SKU numbers, for example BTU. Filled in from the name if left blank, and never changed afterwards. */
+            readonly code?: string;
             /**
              * @description Which price list this garment appears on.
              *
@@ -4577,6 +4607,8 @@ export interface components {
             school_level?: components["schemas"]["GarmentSchoolLevelEnum"];
             readonly school_level_display?: string;
             colour?: string;
+            /** @description The swatch for this colour, as "#RRGGBB". Optional. */
+            colour_hex?: string;
             /** @description Inactive garments stay in reports but cannot be ordered. */
             is_active?: boolean;
             /**
@@ -4796,6 +4828,8 @@ export interface components {
             level?: components["schemas"]["SchoolLevelEnum"];
             readonly level_display?: string;
             address?: string;
+            /** @description Students enrolled. Left blank until the school reports it. */
+            student_count?: number | null;
             primary_warehouse?: number;
             readonly primary_warehouse_name?: string;
             /** @description A closed site stays in reports but takes no new work. */
@@ -5398,6 +5432,8 @@ export interface components {
             level: components["schemas"]["SchoolLevelEnum"];
             readonly level_display: string;
             address?: string;
+            /** @description Students enrolled. Left blank until the school reports it. */
+            student_count?: number | null;
             primary_warehouse: number;
             readonly primary_warehouse_name: string;
             /** @description A closed site stays in reports but takes no new work. */
@@ -8470,6 +8506,25 @@ export interface operations {
             };
         };
     };
+    dashboard_school_notifications_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notifications"];
+                };
+            };
+        };
+    };
     dashboard_summary_retrieve: {
         parameters: {
             query?: {
@@ -8742,6 +8797,8 @@ export interface operations {
     inventory_movements_list: {
         parameters: {
             query?: {
+                date_from?: string;
+                date_to?: string;
                 document_number?: string;
                 /**
                  * @description * `RECEIPT` - Receipt from a Tailoring Center

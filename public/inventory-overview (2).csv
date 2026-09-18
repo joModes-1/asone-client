@@ -1,0 +1,35 @@
+﻿SKU,Garment,Description,Level,Size,Color,Warehouse,Available,Pick,Shipped,Min. Stock,Value
+BTU-8,Blue Tunic (PS),Blue Tunic Blue size 8 (PS),PS,8,Blue,Namayemba,16,548,2,120,480000.00
+BTU-10,Blue Tunic (PS),Blue Tunic Blue size 10 (PS),PS,10,Blue,Namayemba,1117,0,0,120,33510000.00
+BTU-12,Blue Tunic (PS),Blue Tunic Blue size 12 (PS),PS,12,Blue,Namayemba,0,640,0,120,0.00
+BTU-14,Blue Tunic (PS),Blue Tunic Blue size 14 (PS),PS,14,Blue,Namayemba,700,0,0,120,21000000.00
+BTU-16,Blue Tunic (PS),Blue Tunic Blue size 16 (PS),PS,16,Blue,Namayemba,746,0,0,120,22380000.00
+ETU-E2E12,E2E Tunic (PS),E2E Tunic Green size E2E-12 (PS),PS,E2E-12,Green,Namayemba,1521,0,0,120,60840000.00
+GSH-8,Grey Shorts (PS),Grey Shorts Grey size 8 (PS),PS,8,Grey,Namayemba,850,0,0,120,18700000.00
+GSH-10,Grey Shorts (PS),Grey Shorts Grey size 10 (PS),PS,10,Grey,Namayemba,375,0,0,120,8250000.00
+GSH-12,Grey Shorts (PS),Grey Shorts Grey size 12 (PS),PS,12,Grey,Namayemba,400,0,0,120,8800000.00
+GSH-14,Grey Shorts (PS),Grey Shorts Grey size 14 (PS),PS,14,Grey,Namayemba,493,0,0,120,10846000.00
+GSH-16,Grey Shorts (PS),Grey Shorts Grey size 16 (PS),PS,16,Grey,Namayemba,400,0,0,120,8800000.00
+GTR-8,Grey Trousers (HS),Grey Trousers Grey size 8 (HS),HS,8,Grey,Namayemba,396,0,4,120,13860000.00
+GTR-10,Grey Trousers (HS),Grey Trousers Grey size 10 (HS),HS,10,Grey,Namayemba,0,400,0,120,0.00
+GTR-12,Grey Trousers (HS),Grey Trousers Grey size 12 (HS),HS,12,Grey,Namayemba,395,0,0,120,13825000.00
+GTR-14,Grey Trousers (HS),Grey Trousers Grey size 14 (HS),HS,14,Grey,Namayemba,815,0,0,120,24375000.00
+GTR-16,Grey Trousers (HS),Grey Trousers Grey size 16 (HS),HS,16,Grey,Namayemba,400,0,0,120,14000000.00
+JUM-8,Jumper,Jumper Maroon size 8,BOTH,8,Maroon,Namayemba,400,0,0,120,18000000.00
+JUM-10,Jumper,Jumper Maroon size 10,BOTH,10,Maroon,Namayemba,0,400,0,120,0.00
+JUM-12,Jumper,Jumper Maroon size 12,BOTH,12,Maroon,Namayemba,400,0,0,120,18000000.00
+JUM-14,Jumper,Jumper Maroon size 14,BOTH,14,Maroon,Namayemba,422,0,0,120,18990000.00
+JUM-16,Jumper,Jumper Maroon size 16,BOTH,16,Maroon,Namayemba,400,0,0,120,18000000.00
+NSK-8,Navy Skirt (HS),Navy Skirt Navy size 8 (HS),HS,8,Navy,Namayemba,616,0,0,120,19712000.00
+NSK-10,Navy Skirt (HS),Navy Skirt Navy size 10 (HS),HS,10,Navy,Namayemba,341,0,0,120,10912000.00
+NSK-12,Navy Skirt (HS),Navy Skirt Navy size 12 (HS),HS,12,Navy,Namayemba,400,0,0,120,12800000.00
+NSK-14,Navy Skirt (HS),Navy Skirt Navy size 14 (HS),HS,14,Navy,Namayemba,381,0,0,120,12192000.00
+NSK-16,Navy Skirt (HS),Navy Skirt Navy size 16 (HS),HS,16,Navy,Namayemba,157,0,0,120,5024000.00
+SOC-10,Socks,Socks White size 10,BOTH,10,White,Namayemba,385,6,9,120,1925000.00
+SOC-12,Socks,Socks White size 12,BOTH,12,White,Namayemba,400,0,0,120,2000000.00
+SOC-14,Socks,Socks White size 14,BOTH,14,White,Namayemba,0,0,0,70,0.00
+WSH-8,White Shirt,White Shirt White size 8,BOTH,8,White,Namayemba,130,4,6,120,3250000.00
+WSH-10,White Shirt,White Shirt White size 10,BOTH,10,White,Namayemba,400,0,0,120,10000000.00
+WSH-12,White Shirt,White Shirt White size 12,BOTH,12,White,Namayemba,400,0,0,120,10000000.00
+WSH-14,White Shirt,White Shirt White size 14,BOTH,14,White,Namayemba,400,0,0,120,10000000.00
+WSH-16,White Shirt,White Shirt White size 16,BOTH,16,White,Namayemba,397,0,0,120,9925000.00

@@ -64,6 +64,71 @@
   --info-bg: #dbeafe;          /* Draft states */
 
   /* ---------------------------------------------------------------------
+   * Identity colours
+   *
+   * For telling one thing from another where neither is better than the
+   * other — the five roles, today. Deliberately kept apart from the
+   * semantic colours above: green means confirmed and red means wrong, so
+   * a role wearing either would read as a judgement on the person. These
+   * carry no meaning beyond "not that one".
+   *
+   * `--violet` is the pair `.badge--purple` already used as raw hex.
+   * ------------------------------------------------------------------ */
+
+  --violet: #9333ea;
+  --violet-bg: #f3e8ff;
+  --teal: #0d9488;
+  --teal-bg: #ccfbf1;
+  --amber: #b45309;
+  --amber-bg: #fef3c7;
+  --rose: #be185d;
+  --rose-bg: #fce7f3;
+
+  /* ---------------------------------------------------------------------
+   * Garment colours
+   *
+   * What a uniform is actually dyed — read off `Garment.colour`, which is a
+   * free-text field a lead typed. Not brand colours and not semantic ones:
+   * these exist so a navy tunic shows a navy dot, the way a calendar picks
+   * a colour for an event category.
+   *
+   * A name with no match here gets `--garment-unknown` rather than a guess.
+   * ------------------------------------------------------------------ */
+
+  --garment-navy: #1e3a8a;
+  --garment-maroon: #7f1d1d;
+  --garment-grey: #64748b;
+  --garment-green: #15803d;
+  --garment-blue: #2563eb;
+  --garment-black: #111827;
+  --garment-white: #ffffff;
+
+  /* A colour the app has no swatch for. Deliberately NOT white: white is a
+     real uniform colour, so an unknown shade drawn white claims to be white.
+     This is a neutral the eye reads as "not set". */
+  --garment-unknown: #cbd5e1;
+
+  /* Text on `--warning-bg`. `--warning` itself is only 3.1:1 against it,
+     under the 4.5:1 body-text floor; this is the darker amber that passes. */
+  --warning-ink: #92400e;
+
+  /* The pale stop the weekly-report card fades to, under `--asone-green`. */
+  --asone-green-glow: #d0fffb;
+
+  /* ---------------------------------------------------------------------
+   * Paper
+   *
+   * A packing slip and a pick list are printed and read off the page, so
+   * these are deliberately literal rather than theme-following: paper is
+   * white and toner is black whatever the screen is set to.
+   * ------------------------------------------------------------------ */
+
+  --print-paper: #ffffff;
+  --print-ink: #000000;
+  --print-rule: #999999;
+  --print-rule-faint: #cccccc;
+
+  /* ---------------------------------------------------------------------
    * Semantic surfaces and text — APPROVED, from the screen designs
    *
    * What components actually consume. Where the screens and
@@ -164,6 +229,10 @@
   --on-overlay: #ffffff;
   --on-overlay-dim: rgba(255, 255, 255, 0.5);
 
+  /* What dims the page behind something modal — a dialog's ::backdrop and
+     the navigation drawer's scrim. One value, so the two do not drift. */
+  --scrim: rgba(33, 35, 43, 0.45);
+
   /* ---------------------------------------------------------------------
    * 02 / Typography
    *
@@ -236,6 +305,20 @@
    * in fonts.css asks for 400, 500, 600 and 700.
    */
   --weight-medium: 500;
+
+  /*
+   * Emphasis without the full jump to bold — a field label above its value,
+   * a card title, a button.
+   *
+   * Named for the same reason `--weight-medium` was, and it was the more
+   * common of the two: twenty-nine rules across six stylesheets were
+   * already writing `font-weight: 600` by hand. 600 is loaded (the Inter
+   * import in fonts.css asks for 400, 500, 600 and 700), so those rules
+   * worked — they were just the one weight in the system that nothing
+   * named, which is how a screen ends up a step heavier or lighter than the
+   * one beside it with nobody able to say why.
+   */
+  --weight-semibold: 600;
   --weight-bold: 700;
 
   --tracking-overline: 0.08em;
@@ -261,6 +344,13 @@
   --shadow-sm: 0 1px 2px rgba(33, 35, 43, 0.06);
   --shadow-md: 0 2px 8px rgba(33, 35, 43, 0.08);
   --shadow-lg: 0 8px 24px rgba(33, 35, 43, 0.12);
+
+  /* A dialog lifted clear of the page it covers — deeper than --shadow-lg,
+     because a modal sits above everything rather than on the surface. */
+  --shadow-modal: 0 24px 48px rgba(33, 35, 43, 0.24);
+
+  /* A bar that floats above content it scrolls over, lit from below. */
+  --shadow-lifted: 0 -6px 18px rgba(33, 35, 43, 0.06);
 
   /* ---------------------------------------------------------------------
    * Component tokens — buttons

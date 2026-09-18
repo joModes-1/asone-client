@@ -19,9 +19,10 @@
 import { Pagination, Panel } from '@/components'
 import { formatCompactUGX, formatQuantity } from '@/domain/money'
 import type { LedgerRow, WarehouseColumn } from '../pivot'
+import { LIST_PAGE_SIZE } from '@/api/pageSize'
 
 /** The design shows ten rows; a report page should not scroll to be read. */
-const PAGE_SIZE = 10
+const PAGE_SIZE = LIST_PAGE_SIZE
 
 interface SkuLedgerTableProps {
   rows: LedgerRow[]

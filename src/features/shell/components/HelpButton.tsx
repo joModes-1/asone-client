@@ -41,6 +41,7 @@ export function HelpButton() {
       <Modal
         open={open}
         size="md"
+        className="modal--help"
         title={topic ? topic.title : 'Help'}
         subtitle={topic ? 'How this screen works' : undefined}
         onClose={() => setOpen(false)}

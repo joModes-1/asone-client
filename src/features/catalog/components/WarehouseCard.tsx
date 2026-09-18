@@ -14,11 +14,36 @@
  * how a card came to depend on a screen it has nothing to do with. The
  * Compass took its colour from a literal hex; it now inherits, like every
  * other icon here.
+ *
+ * ---------------------------------------------------------------------------
+ * The stats are the dashboard's own tiles
+ * ---------------------------------------------------------------------------
+ * `KpiCard`, with the dashboard's labels, captions and icons — not a second
+ * set of stat markup that happens to look similar. These four figures come
+ * from `/dashboard/summary/?warehouse=`, which is the endpoint behind the
+ * dashboard's KPI row, so the same number should not be called "PENDING
+ * ORDERS · orders" here and "Pending Shipments · Picked, awaiting despatch"
+ * one click away.
+ *
+ * The counting animation went with them. It was `AnimatedNumber`, used
+ * nowhere else in the app, and it made these the only figures in the system
+ * that arrive by ticking up — a figure that animates on a screen where
+ * nothing else does reads as a widget rather than a fact, and it delays the
+ * number a reader came to read.
  */
 
-import { Compass } from 'lucide-react'
-import { AnimatedNumber, Badge, Button } from '@/components'
+import { AlertTriangle, Boxes, Clock, Compass, Truck } from 'lucide-react'
+import { Badge, Button } from '@/components'
+import { formatQuantity } from '@/domain/money'
+import { KpiCard } from '@/features/dashboard/components/KpiCard'
 import type { DashboardSummary, Warehouse } from '@/api/types'
+
+/** A figure that has not arrived reads as a dash, not a zero — as on the
+    dashboard, where zero is a real and meaningful answer. */
+function figure(value: number | undefined, loading: boolean): string {
+  if (loading || value === undefined) return '—'
+  return formatQuantity(value)
+}
 
 interface WarehouseCardProps {
   warehouse: Warehouse
@@ -58,40 +83,37 @@ export function WarehouseCard({
       </p>
 
       <div className="site-card__stats">
-        <div className="site-card__stat">
-          <span className="site-card__stat-label">AVAILABLE STOCK</span>
-          <span className="site-card__stat-value">
-            <AnimatedNumber value={availableUnits} loading={loading} />
-            <span className="site-card__stat-unit"> items</span>
-          </span>
-        </div>
-        <div className="site-card__stat">
-          <span className="site-card__stat-label">PENDING ORDERS</span>
-          <span className="site-card__stat-value">
-            <AnimatedNumber value={pendingOrders} loading={loading} />
-            <span className="site-card__stat-unit"> orders</span>
-          </span>
-        </div>
-        <div className="site-card__stat">
-          <span className="site-card__stat-label">ACTIVE BACKORDERS</span>
-          <span className="site-card__stat-value">
-            <AnimatedNumber value={backorders} loading={loading} />
-            <span className="site-card__stat-unit"> items</span>
-          </span>
-        </div>
-        <div className="site-card__stat">
-          <span className="site-card__stat-label">LOW STOCK SKUS</span>
-          <span
-            className={`site-card__stat-value${
-              !loading && lowStockSkus !== undefined && lowStockSkus > 0
-                ? ' site-card__stat-value--alert'
-                : ''
-            }`}
-          >
-            <AnimatedNumber value={lowStockSkus} loading={loading} />
-            <span className="site-card__stat-unit"> alerts</span>
-          </span>
-        </div>
+        <KpiCard
+          label="Available Stock"
+          value={figure(availableUnits, loading)}
+          caption="Items ready in bins"
+          icon={Boxes}
+        />
+        <KpiCard
+          label="Pending Shipments"
+          value={figure(pendingOrders, loading)}
+          caption="Picked, awaiting despatch"
+          icon={Truck}
+        />
+        <KpiCard
+          label="Backorders"
+          value={figure(backorders, loading)}
+          caption="Outstanding lines"
+          icon={Clock}
+        />
+        <KpiCard
+          label="Low Stock"
+          value={
+            loading || lowStockSkus === undefined
+              ? '—'
+              : `${formatQuantity(lowStockSkus)} SKU${lowStockSkus === 1 ? '' : 's'}`
+          }
+          caption="At or below minimum"
+          icon={AlertTriangle}
+          /* This card is one warehouse, so the count is SKUs at this site —
+             never the all-sites "alerts" wording the dashboard switches to. */
+          tone={lowStockSkus ? 'alert' : 'default'}
+        />
       </div>
 
       <div className="site-card__actions">

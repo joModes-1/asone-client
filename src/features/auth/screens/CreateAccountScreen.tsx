@@ -1,15 +1,25 @@
 /**
- * Create Account — three states, one route.
+ * Create Account — two states, one route.
  *
- * 1. The form: name, email, phone. Submitting immediately emails a code —
- *    `POST /auth/register/` sends it the moment the request is created.
- * 2. Verify Email: the registrant proves they hold that address. This does
- *    not create an account or sign anyone in — it unlocks the request for
- *    a lead to review.
- * 3. Submitted: confirmation that a lead's review is next. A second,
- *    separate code follows later, by email, once a lead approves and
- *    assigns a role — the same confirmation `POST /auth/users/` sends
- *    today.
+ * 1. The form: first name, last name, email, phone.
+ * 2. Submitted: confirmation that a lead's review is next. Credentials
+ *    follow by email once a lead approves and assigns a role — the same
+ *    confirmation `POST /auth/users/` sends today.
+ *
+ * ---------------------------------------------------------------------------
+ * There is no "verify your email" step
+ * ---------------------------------------------------------------------------
+ * There used to be: submitting emailed a six-digit code the registrant typed
+ * back, and until they did, no lead could see the request. Removed 15
+ * September 2026 at ERA 92's request.
+ *
+ * It was doing less than it looked like. A lead approves every request by
+ * hand and nothing exists until one does, and approval emails that address
+ * the account's own credentials — so an address nobody holds fails there,
+ * before anyone can sign in. Meanwhile a code in a spam folder left a
+ * request nobody could see and nobody could resend.
+ *
+ * See `accounts.services.request_registration`.
  */
 
 import { useState } from 'react'
@@ -21,7 +31,6 @@ import { BrandMark, Button, LoadingScreen, ServerUnreachable } from '@/component
 import { paths } from '@/routes/paths'
 import { CreateAccountForm } from '../components/CreateAccountForm'
 import { SplitAuthLayout } from '../components/SplitAuthLayout'
-import { VerifyEmailCard } from '../components/VerifyEmailCard'
 import { useAuth } from '../hooks/useAuth'
 
 export function CreateAccountScreen() {
@@ -43,19 +52,7 @@ export function CreateAccountScreen() {
     try {
       const created = await authApi.requestAccount(input)
       setRegistration(created)
-    } catch (cause) {
-      setError(toApiError(cause))
-    } finally {
-      setPending(false)
-    }
-  }
-
-  async function handleVerify(code: string) {
-    if (!registration) return
-    setPending(true)
-    setError(null)
-    try {
-      await authApi.confirmRegistration({ email: registration.email, code })
+      // Nothing to verify — the request is already in front of the leads.
       setSubmitted(true)
     } catch (cause) {
       setError(toApiError(cause))
@@ -64,31 +61,20 @@ export function CreateAccountScreen() {
     }
   }
 
+
   if (submitted && registration) {
     return (
       <SplitAuthLayout>
         <div className="auth-card">
           <h1 className="auth-card__title">Request submitted</h1>
           <p className="auth-card__body">
-            Your email is confirmed. AsOne's team will review your request and assign you a
-            role — you'll hear from them at <strong>{registration.email}</strong> once that's
-            done.
+            AsOne's team will review your request and assign you a role. You'll
+            hear from them at <strong>{registration.email}</strong> once that's
+            done — that message carries your sign-in details, so check it is an
+            address you can read.
           </p>
           <Button onClick={() => (window.location.href = paths.signIn)}>Back to sign in</Button>
         </div>
-      </SplitAuthLayout>
-    )
-  }
-
-  if (registration) {
-    return (
-      <SplitAuthLayout>
-        <VerifyEmailCard
-          email={registration.email}
-          onSubmit={handleVerify}
-          pending={pending}
-          error={error}
-        />
       </SplitAuthLayout>
     )
   }

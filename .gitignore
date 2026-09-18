@@ -35,3 +35,7 @@ docs/design/
 # Screenshot helper, written per-session for reviewing screens locally.
 capture-*.mjs
 public/assets
+# Local dev tooling and tokens — never commit
+tokens.json
+measure.mjs
+shot2.mjs

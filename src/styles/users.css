@@ -106,78 +106,13 @@
 }
 
 .status-dot--active .status-dot__mark { background: var(--success); }
+
+/* Red rather than grey, and the word with it. An account that cannot sign in
+   is the row somebody is scanning for; in grey it read as an empty value. */
 .status-dot--inactive .status-dot__mark { background: var(--error); }
 .status-dot--inactive { color: var(--error); }
 .status-dot--pending .status-dot__mark { background: var(--warning); }
 .status-dot--pending { color: var(--warning); }
-
-/* ---------------------------------------------------------------------------
- * Status dropdown — the same control on the table and the detail banner
- * ------------------------------------------------------------------------ */
-
-.status-dropdown {
-  position: relative;
-  display: inline-block;
-}
-
-.status-dropdown__trigger {
-  background: none;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  padding: 4px 8px;
-  cursor: pointer;
-  font: inherit;
-}
-
-.status-dropdown__trigger:hover { border-color: var(--border); }
-
-.status-dropdown__trigger:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.status-dropdown__trigger svg { color: var(--text-muted); margin-left: 2px; }
-
-.status-dropdown__panel {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  min-width: 160px;
-  padding: var(--space-1);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-}
-
-.status-dropdown__option {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
-  padding: var(--space-2) var(--space-3);
-  background: none;
-  border: 0;
-  border-radius: var(--radius-sm);
-  font: inherit;
-  font-size: var(--text-body);
-  color: var(--text-primary);
-  text-align: left;
-  cursor: pointer;
-}
-
-.status-dropdown__option:hover { background: var(--surface-sunken); }
-
-.status-dropdown__option--active .status-dot__mark--active { background: var(--success); }
-
-.status-dropdown__option--inactive {
-  color: var(--error);
-}
-
-.status-dropdown__option--inactive .status-dot__mark { background: var(--error); }
 
 /* ---------------------------------------------------------------------------
  * Permissions matrix
@@ -200,148 +135,110 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Add User dialog
+ * Add User wizard
  *
- * Its own overlay and card, prefixed `adduser__` rather than the bare
- * `.modal*` names — this wizard predates the shared `Modal` component in
- * `components/Modal.tsx` (built on `<dialog>`) and duplicated its own names
- * independently. Both files load on every page, so `.modal`/`.modal__head`/
- * `.modal__title`/`.modal__close`/`.modal__body` defined here were silently
- * overriding `components.css`'s versions everywhere `Modal` is used, not
- * just inside this wizard — `users.css` loads last in `base.css`, so it won,
- * and every other dialog on the site lost its border, shadow and layout.
- * Renaming only the five colliding names; everything below that
- * `components.css` never defined (`.modal__step`, `.modal__progress`,
- * `.modal__review`, `.modal__actions`, …) is untouched.
+ * The dialog shell itself is `components/Modal.tsx` now — a native
+ * `<dialog>`, with the focus trap, the inert background and the top layer
+ * that come with it. What is left here is only what is particular to this
+ * wizard: the step bars, the two-up name row, and the review list.
+ *
+ * Every name is prefixed `wizard__`. The previous version defined `.modal`,
+ * `.modal__head`, `.modal__title`, `.modal__close` and `.modal__body`, and
+ * because `users.css` loads last in `base.css` those quietly beat
+ * `components.css` on **every** page — every other dialog in the app lost
+ * its border, shadow and layout, not just this one. Renaming the five that
+ * collided fixed the symptom; prefixing all of them removes the trap for
+ * whoever adds a `.modal__step` to the shared file later.
  * ------------------------------------------------------------------------ */
 
-.adduser-overlay {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: var(--space-5);
-  background: rgba(15, 17, 21, 0.5);
-  z-index: 100;
-}
-
-.adduser-card {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 560px;
-  max-height: 90vh;
-  /* The head stays put and only the body scrolls, so the step counter and
-     the close button stay reachable however long the form gets. */
-  overflow: hidden;
-  background: var(--surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-}
-
-.adduser__head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-5) var(--space-3);
-  background: var(--surface);
-  flex-shrink: 0;
-}
-
-.adduser__title {
-  margin: 0;
-  font-size: var(--text-h3);
-  font-weight: var(--weight-bold);
-  color: var(--text-primary);
-}
-
-.modal__step {
-  margin-left: auto;
-  font-size: var(--text-caption);
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-/* The current number carries the emphasis, not the whole phrase. */
-.modal__step b {
-  font-weight: var(--weight-bold);
-  color: var(--accent);
-}
-
-.adduser__close {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  background: none;
-  border: none;
-  border-radius: var(--radius-pill);
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.adduser__close:hover { background: var(--surface-sunken); }
-
-/* On the header row beside the counter, so the bars read as part of
-   "Step 1 of 3" rather than a band across the dialog. */
-.modal__progress {
+/* Two bars, because there are two steps before the outcome. They were three
+   for a "Step 1 of 3" whose middle step nothing in the design distinguishes
+   from the review. */
+.wizard__progress {
   display: flex;
   align-items: center;
   gap: 4px;
-  width: 72px;
-  flex-shrink: 0;
 }
 
-.modal__progress-bar {
+.wizard__progress-bar {
   flex: 1;
   height: 4px;
+  background: var(--surface-dim);
   border-radius: var(--radius-pill);
-  background: var(--border);
 }
 
-.modal__progress-bar--done { background: var(--accent); }
+.wizard__progress-bar--done { background: var(--accent); }
 
-.adduser__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: 0 var(--space-5) var(--space-5);
-  overflow-y: auto;
-  min-height: 0;
-}
-
-.modal__grid {
+/* First and last name read as one field split in two. */
+.wizard__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
 }
 
-@media (max-width: 480px) {
-  .modal__grid { grid-template-columns: 1fr; }
+@media (max-width: 560px) {
+  .wizard__grid { grid-template-columns: 1fr; }
 }
 
-/* Cancel at one end, Confirm at the other: the way out and the way on are
-   not a pair to be picked between at a glance. */
-.modal__actions {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-top: var(--space-2);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--border);
-}
-
-/* A lone action still sits on the right. */
-.modal__actions--end { justify-content: flex-end; }
-
-.modal__error {
-  margin: 0;
-  padding: var(--space-3);
-  background: var(--error-bg);
+/* What the chosen role can do, before the role is committed to. */
+.wizard__preview {
+  padding: var(--space-4);
+  background: var(--surface-sunken);
   border-radius: var(--radius-md);
-  color: var(--text-primary);
+}
+
+.wizard__preview-title {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wizard__preview-summary {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* The review, and the one-time password, share this list. */
+.wizard__review {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-lg);
+}
+
+.wizard__review dt {
+  margin-bottom: var(--space-1);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wizard__review dd {
+  margin: 0;
   font-size: var(--text-body);
+  color: var(--text-primary);
+}
+
+.wizard__review-value--accent {
+  color: var(--accent);
+  font-weight: var(--weight-bold);
+}
+
+/* A password is read character by character, so it is set in the mono face
+   where a 1 and an l are not the same shape. */
+.wizard__review-value--mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-h3);
+  letter-spacing: 0.06em;
 }
 
 /* ---------------------------------------------------------------------------
@@ -353,165 +250,24 @@
  * fits without scrolling.
  * ------------------------------------------------------------------------ */
 
-.stack-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.stack-field__label {
-  font-size: var(--text-caption);
-  color: var(--text-secondary);
-}
-
-.stack-field__input {
-  width: 100%;
-  height: 40px;
-  padding: 0 12px;
-  background: var(--surface);
-  border: 1px solid var(--field-border);
-  border-radius: var(--radius-md);
-  font-family: inherit;
-  font-size: var(--text-body);
-  color: var(--text-primary);
-}
-
-.stack-field__input:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
-
-.stack-field__select {
-  appearance: none;
-  cursor: pointer;
-  background-image: linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%),
-    linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%);
-  background-position:
-    calc(100% - 18px) center,
-    calc(100% - 13px) center;
-  background-size: 5px 5px;
-  background-repeat: no-repeat;
-  padding-right: var(--space-6);
-}
-
 /* The dropdown arrow for `Select`, which otherwise borrows the text field's
    frame wholesale. Here rather than components.css because `Select` exists
    for this dialog's role and site pickers. */
-.textfield__select {
-  appearance: none;
-  cursor: pointer;
-  background-image: linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%),
-    linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%);
-  background-position:
-    calc(100% - 20px) center,
-    calc(100% - 15px) center;
-  background-size: 5px 5px;
-  background-repeat: no-repeat;
-  padding-right: var(--space-6);
-}
-
 /* ---------------------------------------------------------------------------
  * Role permissions preview — read-only ticks inside Add User
  * ------------------------------------------------------------------------ */
 
 /* The neutral surface, not the accent halo: this panel reports what a role
    already holds, so tinting it brand teal read as an action. */
-.modal__permissions-preview {
-  padding: var(--space-3) var(--space-4);
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-}
-
-.modal__permissions-title {
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-caption);
-  font-weight: var(--weight-bold);
-  color: var(--text-secondary);
-}
-
-.permission-preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.permission-preview__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--text-caption);
-  color: var(--text-primary);
-}
-
-.permission-preview__item input {
-  accent-color: var(--accent);
-  /* Read-only: it reports what the role holds, it does not collect a choice. */
-  pointer-events: none;
-}
-
-.permission-preview__label--off { color: var(--text-muted); }
-
 /* The prose form of the preview: a sentence about the role rather than the
    tick list. Both shapes exist because the design shows ticks and the server
    supplies a summary; whichever the modal renders has a rule here. */
-.modal__permissions-summary {
-  margin: 0;
-  font-size: var(--text-body);
-  color: var(--text-secondary);
-}
-
-.modal__body-note {
-  margin: 0;
-  font-size: var(--text-caption);
-  color: var(--text-secondary);
-}
-
 /* ---------------------------------------------------------------------------
  * Review step
  * ------------------------------------------------------------------------ */
 
-.modal__review {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-}
-
-.modal__review-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  align-items: flex-start;
-}
-
 /* Role and site sit side by side: together they are one fact — what this
    person may do, and where. */
-.modal__review-pair {
-  display: flex;
-  gap: var(--space-7);
-  flex-wrap: wrap;
-}
-
-.modal__review-label {
-  font-size: var(--text-caption);
-  font-weight: var(--weight-bold);
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.modal__review-value { color: var(--text-primary); }
-.modal__review-value--accent { color: var(--accent); font-weight: var(--weight-bold); }
-
 /* ---------------------------------------------------------------------------
  * Password handoff — the last step
  *
@@ -521,82 +277,8 @@
  * locked the new user out until somebody sets a fresh one.
  * ------------------------------------------------------------------------ */
 
-.handoff {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-5) var(--space-4);
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  text-align: center;
-}
-
-.handoff__lead {
-  margin: 0;
-  font-size: var(--text-body);
-  color: var(--text-secondary);
-}
-
 /* Large, monospaced and selectable: the lead reads this onto another
    channel by hand, and a mistyped character cannot be recovered. */
-.handoff__password {
-  display: block;
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  background: var(--surface);
-  border: 1px dashed var(--accent);
-  border-radius: var(--radius-md);
-  font-family: var(--font-mono);
-  font-size: 22px;
-  font-weight: var(--weight-bold);
-  letter-spacing: 0.08em;
-  color: var(--accent-hover);
-  user-select: all;
-  overflow-wrap: anywhere;
-}
-
-.handoff__copy {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: var(--space-2) var(--space-4);
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  font: inherit;
-  font-size: var(--text-caption);
-  font-weight: var(--weight-bold);
-  color: var(--text-primary);
-  cursor: pointer;
-}
-
-.handoff__copy:hover { background: var(--surface); }
-
-.handoff__copy:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.handoff__warning {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  margin: 0;
-  padding: var(--space-3);
-  background: var(--warning-bg);
-  border-radius: var(--radius-md);
-  font-size: var(--text-caption);
-  color: var(--text-primary);
-  text-align: left;
-}
-
-.handoff__warning svg {
-  flex-shrink: 0;
-  color: var(--warning);
-}
-
 /* ---------------------------------------------------------------------------
  * Needs Attention — clickable rows
  *
@@ -635,129 +317,157 @@
 }
 
 /* ---------------------------------------------------------------------------
- * User detail screen — the banner over two info cards
+ * Roles
+ *
+ * The Roles tab used to render the permissions matrix, the same view the
+ * Permissions tab showed — two tabs, one thing, and clicking between them
+ * did nothing. This answers the other question: who the five roles are and
+ * what each is for. The grid of ticks stayed where it belongs.
  * ------------------------------------------------------------------------ */
 
-.user-banner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-5);
-  padding: var(--space-5);
-  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
-  border-radius: var(--radius-lg);
-  color: var(--text-on-accent);
-}
-
-.user-banner__avatar {
+.role-list {
   display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 72px;
-  height: 72px;
-  border-radius: var(--radius-pill);
-  background: var(--on-overlay-dim);
-  font-size: var(--text-h2);
-  font-weight: var(--weight-bold);
-  color: var(--text-on-accent);
-}
-
-.user-banner__info {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-width: 0;
-  flex: 1;
-}
-
-.user-banner__name {
-  margin: 0;
-  font-size: var(--text-h2);
-  font-weight: var(--weight-bold);
-  color: var(--text-on-accent);
-}
-
-.user-banner__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  font-size: var(--text-body);
-  color: var(--text-on-accent);
-  opacity: 0.9;
-}
-
-.user-banner__meta span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.user-banner__badges {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-/* The status dropdown's trigger inherits plain text colour by default; on
-   the gradient it needs to read as light, not dark-on-dark. */
-.user-banner__badges .status-dropdown__trigger {
-  color: var(--text-on-accent);
-  border-color: var(--on-overlay-dim);
-}
-
-.user-banner__badges .status-dropdown__trigger svg { color: var(--text-on-accent); }
-
-.user-banner__actions {
-  display: flex;
-  gap: var(--space-2);
-  flex-shrink: 0;
-}
-
-.user-detail-heading {
-  margin: 0;
-  font-size: var(--text-h3);
-  font-weight: var(--weight-bold);
-  color: var(--text-primary);
-}
-
-.user-detail-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-}
-
-@media (max-width: 760px) {
-  .user-detail-grid { grid-template-columns: 1fr; }
-  .user-banner { flex-wrap: wrap; }
-}
-
-.user-detail-fields {
-  display: flex;
-  flex-direction: column;
   gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.user-detail-field {
+.role-list__item {
+  padding: var(--space-4);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-md);
+}
+
+.role-list__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--table-rule);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
 }
 
-.user-detail-field:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
+.role-list__name {
+  margin: 0;
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
 }
 
-.user-detail-field__label {
+.role-list__summary {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ---------------------------------------------------------------------------
+ * A site that is missing rather than absent
+ *
+ * A warehouse or school account with no site sees nothing and can do nothing
+ * — every request it makes is scoped to a site it does not have. The table
+ * used to print "All Sites" for it, the same phrase a Program Lead gets,
+ * where for a lead that is the truth and here it is a broken account.
+ * ------------------------------------------------------------------------ */
+
+.users__site--missing {
+  color: var(--error);
+  font-weight: var(--weight-bold);
+}
+
+/* The three account actions, wrapping rather than squeezing on a phone. */
+/* ---------------------------------------------------------------------------
+ * One person's profile
+ * ------------------------------------------------------------------------ */
+
+/* Avatar, identity, and the one control that changes any of it. */
+.profile-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+/* Takes the slack, so the button sits hard right however long a name is. */
+.profile-hero__identity {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.profile-hero__name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.profile-hero__title {
+  margin: 0;
+  font-size: var(--text-h1);
+  color: var(--accent);
+  /* A long unbroken address or name breaks rather than widening the card. */
+  overflow-wrap: anywhere;
+}
+
+.profile-hero__email {
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.profile-hero__tags {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+
+/* Quieter than the role badge beside it: the role is what this person *is*,
+   the site is where. Two badges of equal weight read as two roles. */
+.profile-hero__site {
+  padding: var(--space-1) var(--space-3);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
   font-size: var(--text-caption);
   color: var(--text-secondary);
 }
 
-.user-detail-field__value {
-  font-size: var(--text-body);
-  font-weight: var(--weight-bold);
-  color: var(--text-primary);
-  text-align: right;
+/* The facts beside the actions. Collapses to one column on a narrow screen,
+   where side by side leaves neither wide enough to read. */
+.profile-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-5);
+  align-items: start;
 }
+
+@media (max-width: 900px) {
+  .profile-columns { grid-template-columns: minmax(0, 1fr); }
+  .profile-hero { flex-wrap: wrap; }
+}
+
+/* Two columns rather than the shared `auto-fit`, which at this panel's width
+   fitted five across and left the last field orphaned on a row of its own. */
+.detail-list--profile {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/*
+ * Stacked, full width, in the order they are wanted.
+ *
+ * They were a wrapping row, which at this column's width put two buttons on
+ * one line and the destructive one alone underneath — an accident of
+ * wrapping that read as a grouping it did not mean.
+ */
+.user-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.user-actions > * { width: 100%; }

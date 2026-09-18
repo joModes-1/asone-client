@@ -73,6 +73,35 @@ export function schoolOrders(params?: {
   return get<Page<SchoolOrder>>('/orders/school-orders/', params ?? undefined)
 }
 
+/**
+ * Place an order — F30, F31.
+ *
+ * `school` is deliberately not a field: the order belongs to the clerk's own
+ * school, taken from their account. Sending one would invite a school to
+ * order against somebody else's.
+ *
+ * `status` is not one either. Every order starts on Hold and only payment
+ * confirmation moves it.
+ *
+ * Kits are exploded into their component SKUs on the way in, because a
+ * warehouse picks garments and never "a kit" — and the components are
+ * *stored*, so editing a kit next term does not change an order already
+ * placed. Lines carry the price on the order date, so a reprinted invoice
+ * still adds up.
+ */
+export interface PlaceOrderInput {
+  student_name: string
+  /** ISO date. Decides which prices the lines are costed at. */
+  order_date: string
+  kits?: { kit: number; quantity: number }[]
+  skus?: { sku: number; quantity: number }[]
+  notes?: string
+}
+
+export function placeOrder(body: PlaceOrderInput) {
+  return post<SchoolOrder>('/orders/school-orders/', body)
+}
+
 export function schoolOrder(id: number) {
   return get<SchoolOrder>(`/orders/school-orders/${id}/`)
 }

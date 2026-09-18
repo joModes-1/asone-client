@@ -6,10 +6,8 @@
  * timestamp shown under a friendlier label, not a live "seen 2 minutes ago".
  *
  * A real user's row opens their detail screen — the same account, with more
- * room than a table cell has. Status is its own control rather than part of
- * that click target: it is a dropdown offering both Active and Deactivate
- * regardless of the account's current state, so choosing one there acts
- * immediately without leaving the table for the detail screen first.
+ * room than a table cell has. Activating and deactivating an account happen
+ * there, not in this table.
  *
  * `pendingRequests` are not users — nobody has assigned them a role yet, so
  * there is no account to list, and no detail screen to open. They appear
@@ -19,13 +17,12 @@
  * review a Needs Attention click does.
  */
 
-import { useNavigate } from 'react-router-dom'
 import { Users as UsersIcon } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Badge, EmptyState, SkeletonRows } from '@/components'
-import { paths } from '@/routes/paths'
-import { useActivateUser, useDeactivateUser } from '../hooks/useUsers'
-import { StatusDropdown } from './StatusDropdown'
+import { formatDay } from '@/domain/dates'
 import type { RegistrationRequest, UserAdmin } from '@/api/types'
+import { roleTone } from '@/domain/access'
 
 interface UsersTableProps {
   users: UserAdmin[]
@@ -34,8 +31,26 @@ interface UsersTableProps {
   onReviewPending?: (request: RegistrationRequest) => void
 }
 
-function siteFor(user: UserAdmin): string {
-  return user.warehouse_name || user.school_name || 'All Sites'
+/**
+ * Where this user works, and whether that is an answer or a gap.
+ *
+ * "All Sites" is correct for a lead or Finance — the matrix gives them every
+ * location, so a blank site is the truth. It is a *fault* for a warehouse or
+ * school account: every request they make is scoped to a site they do not
+ * have, so they see nothing and can do nothing, and the screen should say so
+ * rather than print the same reassuring phrase as a lead.
+ *
+ * `User.clean()` refuses to save one, but nothing stops `objects.create()`,
+ * and two of these exist in the data today.
+ */
+function siteFor(user: UserAdmin): { label: string; missing: boolean } {
+  const site = user.warehouse_name || user.school_name
+  if (site) return { label: site, missing: false }
+
+  const needsOne = user.role === 'WAREHOUSE_STAFF' || user.role === 'SCHOOL_STAFF'
+  return needsOne
+    ? { label: 'No site assigned', missing: true }
+    : { label: 'All Sites', missing: false }
 }
 
 /** Relative-ish, matching the design's "2 mins ago" / "3 days ago" style. */
@@ -56,8 +71,6 @@ function lastActive(iso: string | null): string {
 
 export function UsersTable({ users, pendingRequests = [], loading, onReviewPending }: UsersTableProps) {
   const navigate = useNavigate()
-  const activateUser = useActivateUser()
-  const deactivateUser = useDeactivateUser()
 
   if (loading) return <SkeletonRows rows={8} height="44px" />
 
@@ -72,7 +85,7 @@ export function UsersTable({ users, pendingRequests = [], loading, onReviewPendi
   }
 
   return (
-    <div className="scroll-x">
+    <div className="table-scroll">
       <table className="ledger">
         <thead>
           <tr>
@@ -113,30 +126,42 @@ export function UsersTable({ users, pendingRequests = [], loading, onReviewPendi
                   Pending
                 </span>
               </td>
-              <td>Requested {new Date(request.created_at).toLocaleDateString()}</td>
+              <td className="ledger__nowrap">
+                Requested {formatDay(request.created_at.slice(0, 10))}
+              </td>
             </tr>
           ))}
           {users.map((user) => (
+            /*
+             * The whole row opens the account, matching the pending rows
+             * above and every other table in the system. The name stays a
+             * real <Link> inside it: the row handler is a convenience for a
+             * mouse, and removing the anchor would take away middle-click,
+             * open-in-new-tab, the status bar preview and the only thing a
+             * keyboard or screen reader can reach.
+             */
             <tr
               key={user.id}
               className="ledger__row--clickable"
-              onClick={() => navigate(paths.userDetail(user.id))}
+              onClick={() => navigate(`/users/${user.id}`)}
             >
               <td className="ledger__strong">
-                {`${user.first_name} ${user.last_name}`.trim() || user.email}
+                <Link className="ledger__link" to={`/users/${user.id}`}>
+                  {`${user.first_name} ${user.last_name}`.trim() || user.email}
+                </Link>
               </td>
               <td>{user.email}</td>
               <td>
-                <Badge tone="info">{user.role_display}</Badge>
+                <Badge tone={roleTone(user.role)}>{user.role_display}</Badge>
               </td>
-              <td>{siteFor(user)}</td>
-              <td onClick={(event) => event.stopPropagation()}>
-                <StatusDropdown
-                  isActive={user.is_active ?? true}
-                  pending={activateUser.isPending || deactivateUser.isPending}
-                  onActivate={() => activateUser.mutate(user.id)}
-                  onDeactivate={() => deactivateUser.mutate(user.id)}
-                />
+              <td className={siteFor(user).missing ? 'users__site--missing' : undefined}>
+                {siteFor(user).label}
+              </td>
+              <td>
+                <span className={`status-dot status-dot--${user.is_active ? 'active' : 'inactive'}`}>
+                  <span className="status-dot__mark" aria-hidden />
+                  {user.is_active ? 'Active' : 'Inactive'}
+                </span>
               </td>
               <td>{lastActive(user.last_login)}</td>
             </tr>

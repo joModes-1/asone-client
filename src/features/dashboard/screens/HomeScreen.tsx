@@ -12,9 +12,13 @@
  *
  * One path rather than two so the sidebar has one Dashboard destination and
  * nobody can be shown a link that answers 403 when they follow it.
+ *
+ * The predicate is shared with the top bar, which uses the same line to
+ * decide whether to show the notification bell — that endpoint sits behind
+ * the same server permission as this screen.
  */
 
-import { scopeOf } from '@/domain/access'
+import { seesWarehouseDashboard } from '@/domain/access'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { DashboardScreen } from './DashboardScreen'
 import { SchoolDashboardScreen } from './SchoolDashboardScreen'
@@ -22,7 +26,7 @@ import { SchoolDashboardScreen } from './SchoolDashboardScreen'
 export function HomeScreen() {
   const { user } = useAuth()
 
-  if (scopeOf(user) === 'assigned_schools') return <SchoolDashboardScreen />
+  if (!seesWarehouseDashboard(user)) return <SchoolDashboardScreen />
 
   return <DashboardScreen />
 }

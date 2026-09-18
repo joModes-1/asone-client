@@ -11,9 +11,12 @@
  */
 
 import {
+  ArrowLeftRight,
   Boxes,
   Clock,
+  Coins,
   FileBarChart,
+  History,
   LayoutDashboard,
   Package,
   PackageOpen,
@@ -22,6 +25,7 @@ import {
   Settings,
   Shirt,
   SlidersHorizontal,
+  Tags,
   Truck,
   Users,
   Warehouse,
@@ -29,6 +33,15 @@ import {
 } from 'lucide-react'
 import sewingMachineUrl from '@/assets/icons/sewing-machine.svg'
 
+/**
+ * Every name `navigation.ts` asks for.
+ *
+ * Four were missing — History, Tags, Coins and ArrowLeftRight — and each fell
+ * through to the `Boxes` default, so Inventory, Stock History, SKUs and
+ * Pricing all wore the same glyph and the rail read as four copies of one
+ * destination. A silent fallback is why nobody noticed: keep this in step
+ * when adding a nav entry.
+ */
 const GLYPHS: Record<string, LucideIcon> = {
   LayoutDashboard,
   FileBarChart,
@@ -37,9 +50,13 @@ const GLYPHS: Record<string, LucideIcon> = {
   Truck,
   Receipt,
   SlidersHorizontal,
+  ArrowLeftRight,
   Clock,
   Boxes,
+  History,
   Shirt,
+  Tags,
+  Coins,
   School,
   Warehouse,
   Users,

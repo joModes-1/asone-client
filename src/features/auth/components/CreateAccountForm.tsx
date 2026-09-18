@@ -20,43 +20,62 @@ interface CreateAccountFormProps {
 }
 
 export function CreateAccountForm({ onSubmit, pending, error }: CreateAccountFormProps) {
-  const [fullName, setFullName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
   const [agreed, setAgreed] = useState(false)
 
   const fieldError = (name: string) => error?.fields?.[name]?.[0]
-  const complete = fullName.trim() && email.trim() && phoneNumber.trim() && agreed
+  const complete =
+    firstName.trim() && lastName.trim() && email.trim() && phoneNumber.trim() && agreed
 
+  /*
+    Two fields, because the server stores two.
+
+    This was one "Full Name" box split on the first space, which guessed
+    wrong in both directions: "Mary Claire Nakato" put two of her names in
+    `last_name`, and a single word was copied into *both* fields — the server
+    requires each to be non-blank, so somebody called Joan was stored as
+    "Joan Joan" and appeared that way in every list a lead reads. Asking is
+    cheaper than guessing, and it is one extra field on a form filled in
+    once.
+  */
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (!complete) return
 
-    // The design shows one Full Name field; the server wants first and last
-    // separately. Split on the first space so "Warehouse Manager" becomes
-    // first="Warehouse", last="Manager" — a single word goes entirely into
-    // first_name, since the server requires both non-blank.
-    const trimmed = fullName.trim()
-    const spaceIndex = trimmed.indexOf(' ')
-    const first_name = spaceIndex === -1 ? trimmed : trimmed.slice(0, spaceIndex)
-    const last_name = spaceIndex === -1 ? trimmed : trimmed.slice(spaceIndex + 1).trim()
-
-    onSubmit({ first_name, last_name: last_name || first_name, email, phone_number: phoneNumber })
+    onSubmit({
+      first_name: firstName.trim(),
+      last_name: lastName.trim(),
+      email: email.trim(),
+      phone_number: phoneNumber.trim(),
+    })
   }
 
   return (
     <form className="signin__form" onSubmit={handleSubmit} noValidate>
       {error && !error.fields && <Alert tone="error">{error.message}</Alert>}
 
-      <TextField
-        label="Full Name"
-        autoComplete="name"
-        required
-        autoFocus
-        value={fullName}
-        error={fieldError('first_name') ?? fieldError('last_name')}
-        onChange={(event) => setFullName(event.target.value)}
-      />
+      <div className="signin__row">
+        <TextField
+          label="First Name"
+          autoComplete="given-name"
+          required
+          autoFocus
+          value={firstName}
+          error={fieldError('first_name')}
+          onChange={(event) => setFirstName(event.target.value)}
+        />
+        <TextField
+          label="Last Name"
+          autoComplete="family-name"
+          required
+          value={lastName}
+          error={fieldError('last_name')}
+          onChange={(event) => setLastName(event.target.value)}
+        />
+      </div>
 
       <TextField
         label="Email Address"
@@ -87,7 +106,7 @@ export function CreateAccountForm({ onSubmit, pending, error }: CreateAccountFor
       </label>
 
       <div className="signin__actions signin__actions--compact">
-        <Button type="submit" size="md" disabled={!complete || pending}>
+        <Button type="submit" size="lg" full disabled={!complete || pending}>
           {pending ? 'Creating account…' : 'Create Account'}
         </Button>
       </div>

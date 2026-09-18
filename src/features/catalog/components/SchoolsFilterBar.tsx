@@ -26,7 +26,6 @@ interface SchoolsFilterBarProps {
   isActive: boolean | null
   onIsActiveChange: (value: boolean | null) => void
   warehouses: Warehouse[]
-  onAdd: () => void
 }
 
 const ALL = 'all'
@@ -41,7 +40,6 @@ export function SchoolsFilterBar({
   isActive,
   onIsActiveChange,
   warehouses,
-  onAdd,
 }: SchoolsFilterBarProps) {
   return (
     <div className="schools-filter-card">
@@ -108,10 +106,6 @@ export function SchoolsFilterBar({
         </select>
         <ChevronDown size={14} className="schools-filter__chevron" aria-hidden />
       </div>
-
-      <button type="button" className="schools-filter__add-btn" onClick={onAdd}>
-        + Add School
-      </button>
     </div>
   )
 }
