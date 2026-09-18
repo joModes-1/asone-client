@@ -271,3 +271,17 @@ export type SchoolDashboard = S['SchoolDashboard']
 export type SchoolDelivery = S['DeliveryToConfirm']
 export type SchoolBackorder = S['SchoolBackorder']
 export type PackingListLine = S['PackingListLine']
+
+// ---------------------------------------------------------------------------
+// Organization — the Settings screen
+// ---------------------------------------------------------------------------
+
+/**
+ * The one settings row. Read by anyone signed in, written by Program Lead
+ * and Operations Manager only — see `organization/views.py::SettingsView`.
+ */
+export type OrgSettings = S['Settings']
+export type Timezone = S['TimezoneEnum']
+export type Currency = S['CurrencyEnum']
+export type DefaultPaperSize = S['DefaultPaperSizeEnum']
+export type PackingListLayout = S['PackingListLayoutEnum']

@@ -2972,6 +2972,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organization/settings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The Settings screen.
+         *
+         *     Read by anyone signed in — timezone and currency are needed to render
+         *     the app consistently regardless of role. Written by Program Lead and
+         *     Operations Manager only, the same "Table Updates" column that gates
+         *     every other piece of master data.
+         */
+        get: operations["organization_settings_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description The Settings screen.
+         *
+         *     Read by anyone signed in — timezone and currency are needed to render
+         *     the app consistently regardless of role. Written by Program Lead and
+         *     Operations Manager only, the same "Table Updates" column that gates
+         *     every other piece of master data.
+         */
+        patch: operations["organization_settings_partial_update"];
+        trace?: never;
+    };
     "/api/procurement/group-orders/": {
         parameters: {
             query?: never;
@@ -3446,6 +3478,11 @@ export interface components {
             /** @default  */
             notes: string;
         };
+        /**
+         * @description * `UGX` - Ugandan Shilling (UGX)
+         * @enum {string}
+         */
+        CurrencyEnum: "UGX";
         /** @description The six tiles across the top — F62. */
         DashboardSummary: {
             /** @description Units on hand and free to promise. */
@@ -3471,6 +3508,12 @@ export interface components {
             /** @default  */
             notes: string;
         };
+        /**
+         * @description * `A4` - A4 (Standard Ugandan Format)
+         *     * `LETTER` - US Letter
+         * @enum {string}
+         */
+        DefaultPaperSizeEnum: "A4" | "LETTER";
         /** @description A parcel sent to this school that nobody has confirmed arrived. */
         DeliveryToConfirm: {
             id: number;
@@ -4036,6 +4079,12 @@ export interface components {
             lines: components["schemas"]["PackingListLine"][];
             total_units: number;
         };
+        /**
+         * @description * `SKU_GROUPED` - Standard SKU-Grouped
+         *     * `ORDER_GROUPED` - Grouped by Order
+         * @enum {string}
+         */
+        PackingListLayoutEnum: "SKU_GROUPED" | "ORDER_GROUPED";
         /**
          * @description One item in the parcel, and who it is for.
          *
@@ -4831,6 +4880,41 @@ export interface components {
             readonly payment_reference?: string;
             readonly lines?: components["schemas"]["SchoolOrderLine"][];
         };
+        /**
+         * @description The whole Settings screen, one document.
+         *
+         *     `default_warehouse` accepts an id on write and returns the summary object
+         *     on read, the same split `UserAdminSerializer` uses for a user's own site.
+         */
+        PatchedSettings: {
+            organization_name?: string;
+            default_warehouse?: number | null;
+            readonly default_warehouse_detail?: components["schemas"]["WarehouseSummary"];
+            timezone?: components["schemas"]["TimezoneEnum"];
+            readonly timezone_display?: string;
+            currency?: components["schemas"]["CurrencyEnum"];
+            readonly currency_display?: string;
+            /** @description Suggested starting value when setting a new SKU's minimum stock level. Does not change any level already set. */
+            default_minimum_stock_threshold?: number;
+            /** @description How far below the minimum counts as critical, as a percentage of it. */
+            critical_safety_buffer_percent?: number;
+            /** @description Stored for a future automatic-reorder feature. Nothing places a production order from this today — see procurement/services.py for how production orders are actually raised. */
+            auto_trigger_tailoring_center_reorder?: boolean;
+            low_stock_alerts_enabled?: boolean;
+            receipt_discrepancy_alerts_enabled?: boolean;
+            backorder_allocation_alerts_enabled?: boolean;
+            /** @description Stored for a future offline mode. No code reads this value today. */
+            auto_sync_interval_minutes?: number;
+            /** @description Stored for a future offline mode. No code reads this value today. */
+            offline_data_retention_days?: number;
+            default_paper_size?: components["schemas"]["DefaultPaperSizeEnum"];
+            readonly default_paper_size_display?: string;
+            packing_list_layout?: components["schemas"]["PackingListLayoutEnum"];
+            readonly packing_list_layout_display?: string;
+            /** Format: date-time */
+            readonly updated_at?: string;
+            readonly updated_by_name?: string;
+        };
         PatchedSize: {
             readonly id?: number;
             name?: string;
@@ -5525,6 +5609,41 @@ export interface components {
             must_change_password: boolean;
         };
         /**
+         * @description The whole Settings screen, one document.
+         *
+         *     `default_warehouse` accepts an id on write and returns the summary object
+         *     on read, the same split `UserAdminSerializer` uses for a user's own site.
+         */
+        Settings: {
+            organization_name?: string;
+            default_warehouse?: number | null;
+            readonly default_warehouse_detail: components["schemas"]["WarehouseSummary"];
+            timezone?: components["schemas"]["TimezoneEnum"];
+            readonly timezone_display: string;
+            currency?: components["schemas"]["CurrencyEnum"];
+            readonly currency_display: string;
+            /** @description Suggested starting value when setting a new SKU's minimum stock level. Does not change any level already set. */
+            default_minimum_stock_threshold?: number;
+            /** @description How far below the minimum counts as critical, as a percentage of it. */
+            critical_safety_buffer_percent?: number;
+            /** @description Stored for a future automatic-reorder feature. Nothing places a production order from this today — see procurement/services.py for how production orders are actually raised. */
+            auto_trigger_tailoring_center_reorder?: boolean;
+            low_stock_alerts_enabled?: boolean;
+            receipt_discrepancy_alerts_enabled?: boolean;
+            backorder_allocation_alerts_enabled?: boolean;
+            /** @description Stored for a future offline mode. No code reads this value today. */
+            auto_sync_interval_minutes?: number;
+            /** @description Stored for a future offline mode. No code reads this value today. */
+            offline_data_retention_days?: number;
+            default_paper_size?: components["schemas"]["DefaultPaperSizeEnum"];
+            readonly default_paper_size_display: string;
+            packing_list_layout?: components["schemas"]["PackingListLayoutEnum"];
+            readonly packing_list_layout_display: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            readonly updated_by_name: string;
+        };
+        /**
          * @description Sending a picked order out — F41.
          *
          *     `from_warehouse` is optional and defaults to the order's own. It exists
@@ -5701,6 +5820,11 @@ export interface components {
             /** @description A closed site stays in reports but takes no new work. */
             is_active?: boolean;
         };
+        /**
+         * @description * `Africa/Kampala` - East Africa Time (EAT) / Kampala (UTC+3)
+         * @enum {string}
+         */
+        TimezoneEnum: "Africa/Kampala";
         TokenRefresh: {
             readonly access: string;
             refresh: string;
@@ -10088,6 +10212,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Shipment"];
+                };
+            };
+        };
+    };
+    organization_settings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Settings"];
+                };
+            };
+        };
+    };
+    organization_settings_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedSettings"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedSettings"];
+                "multipart/form-data": components["schemas"]["PatchedSettings"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Settings"];
                 };
             };
         };
