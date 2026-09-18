@@ -111,6 +111,8 @@
    is the row somebody is scanning for; in grey it read as an empty value. */
 .status-dot--inactive .status-dot__mark { background: var(--error); }
 .status-dot--inactive { color: var(--error); }
+.status-dot--pending .status-dot__mark { background: var(--warning); }
+.status-dot--pending { color: var(--warning); }
 
 /* ---------------------------------------------------------------------------
  * Permissions matrix

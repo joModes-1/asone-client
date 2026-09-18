@@ -5,12 +5,16 @@
  * tracks — there is no separate presence/activity feed, so this is a sign-in
  * timestamp shown under a friendlier label, not a live "seen 2 minutes ago".
  *
+ * A real user's row opens their detail screen — the same account, with more
+ * room than a table cell has. Activating and deactivating an account happen
+ * there, not in this table.
+ *
  * `pendingRequests` are not users — nobody has assigned them a role yet, so
- * there is no account to list. They appear here anyway rather than on a
- * separate screen, because "somebody asking to join the Users list" belongs
- * in the Users list: Role reads "No Role" and Status reads "Pending",
- * clicking either opens the same Approve/Decline review a Needs Attention
- * click does.
+ * there is no account to list, and no detail screen to open. They appear
+ * here anyway rather than on a separate screen, because "somebody asking to
+ * join the Users list" belongs in the Users list: Role reads "No Role" and
+ * Status reads "Pending", clicking either opens the same Approve/Decline
+ * review a Needs Attention click does.
  */
 
 import { Users as UsersIcon } from 'lucide-react'
@@ -117,7 +121,10 @@ export function UsersTable({ users, pendingRequests = [], loading, onReviewPendi
               </td>
               <td>—</td>
               <td>
-                <Badge tone="warning">Pending</Badge>
+                <span className="status-dot status-dot--pending">
+                  <span className="status-dot__mark" aria-hidden />
+                  Pending
+                </span>
               </td>
               <td className="ledger__nowrap">
                 Requested {formatDay(request.created_at.slice(0, 10))}

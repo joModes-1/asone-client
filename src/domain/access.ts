@@ -133,6 +133,16 @@ export function canRaiseProductionOrder(user: CurrentUser | null): boolean {
 }
 
 /**
+ * Who may edit the Settings screen — organization name, defaults, alert
+ * toggles. Same "Table Updates" column as every other piece of master data;
+ * everyone signed in can still read the screen, since timezone and currency
+ * are needed to render the app consistently regardless of role.
+ */
+export function canEditOrgSettings(user: CurrentUser | null): boolean {
+  return can(user, 'table_updates')
+}
+
+/**
  * Who may place, amend or cancel a school order — F30-F33, F36.
  *
  * **School Staff, and nobody else.** AsOne's p.9 matrix leaves the School
