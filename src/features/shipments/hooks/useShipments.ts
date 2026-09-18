@@ -8,8 +8,9 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as shipmentsApi from '@/api/shipments'
 import { snackbar } from '@/components'
+import { LIST_PAGE_SIZE } from '@/api/pageSize'
 
-export const SHIPMENTS_PAGE_SIZE = 15
+export const SHIPMENTS_PAGE_SIZE = LIST_PAGE_SIZE
 
 export function useShipments(page: number, filters: shipmentsApi.ShipmentFilters) {
   return useQuery({
@@ -28,16 +29,28 @@ export function useShipment(id: number) {
   })
 }
 
-/** How many backlog rows a page holds. Matches every other list. */
-export const PICKING_PAGE_SIZE = 15
+/**
+ * How many backlog rows a page holds.
+ *
+ * Ten rather than the fifteen every other list uses, because this is a
+ * working queue rather than a record to read: a clerk takes the top of it to
+ * the shelves, and a page they can hold in their head is worth more here
+ * than one that shows more at once.
+ */
+export const PICKING_PAGE_SIZE = LIST_PAGE_SIZE
 
 /** The picking backlog — F38, the shipping screen's landing view. */
-export function usePickingQueue(warehouseId: number | null, page: number) {
+export function usePickingQueue(
+  warehouseId: number | null,
+  page: number,
+  status: shipmentsApi.PickingStatus | null = null,
+) {
   return useQuery({
-    queryKey: ['shipments', 'picking-queue', warehouseId, page],
+    queryKey: ['shipments', 'picking-queue', warehouseId, page, status],
     queryFn: () =>
       shipmentsApi.pickingQueue({
         warehouse: warehouseId,
+        status,
         page,
         page_size: PICKING_PAGE_SIZE,
       }),

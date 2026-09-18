@@ -84,7 +84,11 @@
   gap: var(--space-3);
   padding: var(--space-4);
   background:
-    linear-gradient(0deg, rgba(94, 142, 142, 0.05), rgba(94, 142, 142, 0.05)),
+    linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--accent) 5%, transparent),
+      color-mix(in srgb, var(--accent) 5%, transparent)
+    ),
     var(--surface);
   border: 1px solid var(--accent);
   border-radius: var(--radius-lg);
@@ -94,6 +98,38 @@
    red for errors and uses the brand for emphasis. */
 .kpi--alert {
   border-color: var(--warning);
+}
+
+/*
+ * A tile that answers its own figure.
+ *
+ * Only some do — see KpiCard's `to`. It has to *look* clickable, not merely
+ * behave that way, so it lifts on hover and keeps the focus ring an anchor
+ * would have. `color: inherit` because the tile's own type colours are
+ * already set by the tokens; without it the whole card turns link-blue.
+ */
+.kpi--link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.kpi--link:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.kpi--link:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi--link { transition: none; }
+  .kpi--link:hover { transform: none; }
 }
 
 .kpi__figure {
@@ -120,7 +156,7 @@
 .kpi__caption {
   margin: 0;
   font-size: var(--text-caption);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   color: var(--text-primary);
 }
 
@@ -240,7 +276,7 @@
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   font-size: var(--text-caption);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -418,7 +454,7 @@
   min-width: 0;
   padding: var(--space-4) 20px;
   border-radius: var(--radius-lg);
-  background: linear-gradient(168deg, var(--asone-green) 23%, #d0fffb 104%);
+  background: linear-gradient(168deg, var(--asone-green) 23%, var(--asone-green-glow) 104%);
   color: var(--text-on-dark);
 }
 
@@ -435,7 +471,7 @@
   color: var(--text-on-dark);
   font-family: var(--font-promo);
   font-size: var(--text-h2);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -444,7 +480,7 @@
   margin: 0;
   font-family: var(--font-promo);
   font-size: var(--text-caption);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 
 .promo__action {
@@ -456,7 +492,7 @@
   color: var(--text-on-dark);
   font-family: var(--font-promo);
   font-size: var(--text-caption);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -485,46 +521,38 @@
   .promo__title { font-size: var(--text-h2); }
 }
 
-.chart__svg {
-  display: block;
+/* ---------------------------------------------------------------------------
+ * Charts
+ *
+ * The hand-drawn SVG this replaced had eight classes for its grid, ticks,
+ * area and week labels. ApexCharts draws all of that itself, from the
+ * options `components/LineChart.tsx` builds out of the same tokens — so the
+ * eight rules went with it, and there is one place left that decides how a
+ * chart looks.
+ * ------------------------------------------------------------------------ */
+
+.chart {
+  /* The library sizes its own canvas; this only keeps it inside the panel
+     and stops a wide legend pushing the card. */
   width: 100%;
-  height: auto;
-  overflow: visible;
+  min-width: 0;
 }
 
-.chart__grid {
-  stroke: var(--grey-rule);
-  stroke-width: 1;
-  stroke-dasharray: 4 4;
+/* ApexCharts injects its tooltip with inline styles and its own class names.
+   Only the surface is reset — the rest of its layout is fine, and fighting
+   it rule by rule is how a themed library becomes a forked one. */
+.chart .apexcharts-tooltip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  color: var(--text-primary);
 }
 
-.chart__area {
-  fill: var(--accent);
-  opacity: 0.12;
-}
-
-.chart__line {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 2;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-
-.chart__tick,
-.chart__week {
-  fill: var(--text-secondary);
-  font-family: var(--font-sans);
-  font-size: var(--text-overline);
-  font-variant-numeric: tabular-nums;
-}
-
-.chart__tick { text-anchor: end; }
-
-.chart__week {
-  text-anchor: middle;
-  font-weight: 600;
-  fill: var(--text-primary);
+.chart .apexcharts-tooltip-title {
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--table-rule);
+  font-weight: var(--weight-bold);
 }
 
 .chart__note {

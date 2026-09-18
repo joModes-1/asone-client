@@ -6,6 +6,10 @@
  */
 
 import { useState } from 'react'
+import { Plus } from 'lucide-react'
+import { Button } from '@/components'
+import { can } from '@/domain/access'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { AppShell } from '@/features/shell/components/AppShell'
 import { AddSchoolModal } from '../components/AddSchoolModal'
 import { SchoolsFilterBar } from '../components/SchoolsFilterBar'
@@ -22,6 +26,7 @@ const EMPTY_FILTERS: SchoolFilters = {
 }
 
 export function SchoolsScreen() {
+  const { user } = useAuth()
   const [filters, setFilters] = useState<SchoolFilters>(EMPTY_FILTERS)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
@@ -38,12 +43,27 @@ export function SchoolsScreen() {
   }
 
   return (
-    <AppShell title="Schools">
-      <header className="page-head">
-        <h1 className="page-head__title">Schools</h1>
-        <p className="page-head__subtitle">
-          Manage uniform programs, student enrollment ratios, and school dispatch hubs.
-        </p>
+    <AppShell title="Schools" searchHint="school">
+      {/*
+        The add button belongs opposite the title, like Warehouses, Tailoring
+        Centers, Users and Inventory. It sat at the end of the filter bar,
+        which put a thing that *creates* a school inside the row that
+        *narrows* the list of them.
+      */}
+      <header className="page-head page-head--split">
+        <div>
+          <h1 className="page-head__title">Schools</h1>
+          <p className="page-head__subtitle">
+            Manage uniform programs, student enrollment ratios, and school dispatch hubs.
+          </p>
+        </div>
+
+        {can(user, 'table_updates') && (
+          <Button onClick={() => setIsAddModalOpen(true)}>
+            <Plus size={16} aria-hidden />
+            Add school
+          </Button>
+        )}
       </header>
 
       <SchoolsFilterBar
@@ -56,7 +76,6 @@ export function SchoolsScreen() {
         isActive={filters.isActive}
         onIsActiveChange={(isActive) => applyFilter({ isActive })}
         warehouses={warehouses}
-        onAdd={() => setIsAddModalOpen(true)}
       />
 
       <SchoolsTable

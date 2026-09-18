@@ -77,7 +77,7 @@ export function StockReportScreen() {
   }
 
   return (
-    <AppShell title="Inventory Reports">
+    <AppShell title="Inventory Reports" searchHint="SKU or description">
       <Link className="page-back" to="/reports">
         <ArrowLeft size={14} aria-hidden />
         All reports

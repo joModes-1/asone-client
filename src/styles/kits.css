@@ -1,0 +1,300 @@
+/**
+ * Uniform kits.
+ *
+ * Cards rather than a table, as drawn — and for a reason that outlives the
+ * drawing: the thing worth seeing about a kit is its *contents*, which is a
+ * list, and a table would either hide that behind a click or grow a column
+ * that wraps to four lines.
+ *
+ * Everything below reads from tokens.css. No literal colour appears here.
+ */
+
+/* 01 / The card grid ------------------------------------------------------ */
+
+/*
+ * Two columns, stated rather than derived.
+ *
+ * `repeat(auto-fit, minmax(380px, 1fr))` looked right with two kits and was
+ * wrong the moment the list was filtered: auto-fit collapses the empty track,
+ * so a single Primary School kit stretched a card across the whole page and
+ * the same kit changed shape depending on which tab you were on.
+ *
+ * Two is also the ceiling, not just the default — a third column takes the
+ * width the component chips need to stay on two lines.
+ */
+.kit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  /* A card that is not in a full row should not stretch to fill it. */
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .kit-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.kit-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.kit-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.kit-card__name {
+  margin: 0;
+  font-size: var(--text-h3);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.kit-card__meta {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+}
+
+/* A recessed well, so the contents read as part of the kit rather than as
+   more of the card's own text. */
+.kit-card__components {
+  padding: var(--space-4);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-md);
+}
+
+.kit-card__label {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kit-card__empty {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+}
+
+/* 02 / Component chips ---------------------------------------------------- */
+
+.kit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kit-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-caption);
+  color: var(--text-primary);
+}
+
+/* The quantity is the half people scan for, so it is not the same weight as
+   the name it follows. */
+.kit-chip__qty {
+  font-weight: var(--weight-bold);
+  color: var(--text-secondary);
+}
+
+/* 03 / The card's foot ---------------------------------------------------- */
+
+.kit-card__foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--table-rule);
+}
+
+/*
+ * The brand green, as drawn — the same `--accent` the page headings use, not
+ * body black. On a card whose other numbers are quantities, the price is the
+ * one figure that is not a count, and the colour is what says so.
+ */
+.kit-card__price {
+  margin: 0;
+  font-size: var(--text-h2);
+  font-weight: var(--weight-bold);
+  color: var(--accent);
+}
+
+/*
+ * Not a price. The server returns null where a component has no price today
+ * or the kit is empty, and "UGX 0" would be a figure somebody could quote to
+ * a parent — so it is set as prose, at prose size.
+ */
+.kit-card__unpriced {
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+  color: var(--text-muted);
+}
+
+/* 04 / The detail header -------------------------------------------------- */
+
+/*
+ * `flex-direction: row` is not redundant.
+ *
+ * This element carries `.card-panel` too, and that class is already a
+ * *column* flex container. Setting only `display: flex` here left the column
+ * direction in place, so `justify-content: space-between` pushed the facts to
+ * the bottom of the panel and `flex: 1 1 320px` on the identity block set a
+ * 320px **height** rather than a width — a title, one line of subtitle, and
+ * 263px of nothing under them.
+ */
+.kit-hero {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.kit-hero__identity { flex: 1 1 320px; }
+
+.kit-hero__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.kit-hero__facts {
+  display: flex;
+  gap: var(--space-5);
+  margin: 0;
+  text-align: right;
+}
+
+.kit-hero__facts dt {
+  margin-bottom: var(--space-1);
+  font-size: var(--text-small);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kit-hero__facts dd {
+  margin: 0;
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+/*
+ * Green, and the largest thing in the header — the same treatment as the
+ * card, so the figure reads the same wherever it appears.
+ *
+ * Scoped through the parent on purpose. `.kit-hero__facts dd` above is a
+ * class *and* an element, so a bare `.kit-hero__price` loses to it however
+ * far down the file it sits, and the price came out the same black as the
+ * school level beside it. Specificity, not order.
+ */
+.kit-hero__facts dd.kit-hero__price {
+  font-size: var(--text-h2);
+  color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .kit-hero__facts { text-align: left; }
+}
+
+/* 05 / The active toggle -------------------------------------------------- */
+
+.kit-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.kit-toggle input { width: 16px; height: 16px; }
+
+/*
+ * The bill of materials' own total, green like the header figure it should
+ * agree with — if the two ever differ, that is worth seeing at a glance.
+ *
+ * Qualified by the table for the same reason as the header price: `.ledger
+ * td` sets a colour and outranks a bare class.
+ */
+.ledger td.kit-total {
+  color: var(--accent);
+  font-weight: var(--weight-bold);
+}
+
+/* 06 / An even two-column form ------------------------------------------- */
+
+/*
+ * `.compose` pins its left column to 360px, which is right where it was
+ * written: a production order's line table carries four columns and a
+ * 640px minimum, so the details panel beside it has to give way.
+ *
+ * A kit's component table is narrower — an item, a quantity, a total — so
+ * the two panels can share the width evenly, which is what the form looks
+ * like it should do when neither side is obviously the bigger job.
+ *
+ * A modifier rather than a change to `.compose`, so production orders and
+ * warehouse transfers keep the proportions they were built with.
+ */
+.compose--even {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/*
+ * The inherited 640px floor is what the production table needs and this one
+ * does not; left in place it would put a horizontal scrollbar inside a
+ * column that is now half the page.
+ */
+.compose--even .compose__lines .ledger {
+  min-width: 420px;
+}
+
+/*
+ * Money on one line. In half the width "UGX 60,000" broke after the currency
+ * and every row grew a second line for no information — a figure split
+ * across two lines is harder to scan than one that is simply narrower.
+ */
+.compose--even .compose__lines .ledger__num {
+  white-space: nowrap;
+}
+
+/* The item column takes whatever the other three do not, so the select shows
+   as much of the name as there is room for rather than a fixed slice. */
+.compose--even .compose__lines .ledger td:first-child,
+.compose--even .compose__lines .ledger th:first-child {
+  width: 100%;
+}
+
+/* The quantity box does not need to be as wide as the column it sits in. */
+.compose--even .compose__lines .input--count {
+  max-width: 72px;
+}
+
+/* The hero's figures sit beside the title rather than filling the row, so
+   the kit's name keeps the space it needs. */
+.kit-hero__figures {
+  flex: 0 1 460px;
+}

@@ -109,6 +109,30 @@ export function formatDay(value: string): string {
   })
 }
 
+/**
+ * A full ISO timestamp as "12 May 2026, 14:32".
+ *
+ * For the moment something *happened* — a sign-in, a posting — where
+ * `formatDay` is for a date somebody chose. The time is the point: "last
+ * signed in 16 Sep" does not tell a lead whether that was this morning or
+ * before lunch, and on a shared machine that is the question.
+ *
+ * `new Date(iso)` is right here, unlike in `formatDay`: a timestamp carries
+ * its own zone, so there is no UTC-midnight trap to avoid.
+ */
+export function formatDateTime(value: string | null | undefined, fallback = 'Never'): string {
+  if (!value) return fallback
+  const at = new Date(value)
+  if (Number.isNaN(at.getTime())) return fallback
+  return at.toLocaleString(undefined, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 /** `YYYY-MM-DD` for `days` before today, in local time. */
 export function daysAgoISO(days: number, now: Date = new Date()): string {
   const then = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days)

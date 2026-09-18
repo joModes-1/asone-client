@@ -66,7 +66,7 @@ export function BackordersScreen() {
   const rows = queue.data ?? []
 
   return (
-    <AppShell title="Backorders">
+    <AppShell title="Backorders" searchHint="order or school">
       <header className="page-head">
         <h1 className="page-head__title">Backorders</h1>
         <p className="page-head__subtitle">

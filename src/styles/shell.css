@@ -21,6 +21,10 @@
 .shell__content {
   flex: 1;
   min-width: 0;
+  /* Belt and braces with `.table-card`'s own floor: a screen that puts a
+     wide element directly in the content column, outside a card, still has
+     somewhere to give. */
+  overflow-x: clip;
   padding: var(--space-5) var(--space-5) var(--space-6);
 }
 
@@ -174,6 +178,18 @@ dialog {
 /* The chevron follows its heading rather than shouting on its own. */
 .sidebar__group-label svg { color: inherit; opacity: 0.8; }
 
+/*
+ * A promoted single-item group — see Sidebar.tsx.
+ *
+ * It sits where a section heading would, so it takes that heading's vertical
+ * rhythm rather than a nested item's: no extra indent, and the same breathing
+ * room above and below that `.sidebar__group` gives its neighbours. Otherwise
+ * a flattened link reads as if it had fallen out of the section above it.
+ */
+.sidebar__link--solo {
+  margin-block: var(--space-1);
+}
+
 .sidebar__link {
   display: flex;
   align-items: center;
@@ -187,7 +203,7 @@ dialog {
   transition: background-color 120ms ease;
 }
 
-.sidebar__link:hover { background: rgba(255, 255, 255, 0.1); }
+.sidebar__link:hover { background: color-mix(in srgb, var(--text-on-dark) 10%, transparent); }
 
 .sidebar__link--active { background: var(--tone-slate); }
 
@@ -276,7 +292,14 @@ dialog {
   color: var(--text-on-dark);
 }
 
-.topbar__left { display: flex; align-items: center; gap: var(--space-4); }
+/* `min-width: 0` so the site chip inside can actually shrink — without it
+   the flex item keeps its content width and the bar overflows anyway. */
+.topbar__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
 
 .topbar__chip {
   padding: var(--space-2) var(--space-3);
@@ -284,19 +307,31 @@ dialog {
   border-radius: var(--radius-sm);
   color: var(--accent);
   font-size: var(--text-caption);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   white-space: nowrap;
 }
 
+/*
+ * Shrinks and truncates rather than forcing the bar wider.
+ *
+ * "Namayemba Warehouse" at `white-space: nowrap` held this chip at 170px,
+ * which on a 390px phone pushed the whole top bar — and with it the page —
+ * 27 to 43px past the viewport on every screen that shows it. The name is
+ * worth a truncation; a sideways-scrolling page is not.
+ */
 .topbar__site {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--on-overlay-dim);
   border-radius: var(--radius-sm);
   font-size: var(--text-caption);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .topbar__search {
@@ -360,19 +395,148 @@ dialog {
   line-height: 1.2;
 }
 
+/* ---------------------------------------------------------------------------
+ * The navigation drawer
+ *
+ * Above 1080px the sidebar is simply there and none of this applies: the
+ * menu button is hidden, the scrim never shows, and the grid keeps its two
+ * columns.
+ *
+ * Below it the rail is gone and the nav slides in over the content. It used
+ * to collapse to 72px of icons instead, which cost 18% of a 390px phone
+ * permanently and — with the labels hidden — left recognising the icon as
+ * the only way to find a screen.
+ * ------------------------------------------------------------------------ */
+
+/* Hidden above the breakpoint, where there is a sidebar and nothing to open. */
+.topbar__menu {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: var(--surface-container);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.topbar__menu:hover { background: var(--surface); }
+
+.shell__scrim { display: none; }
+
 @media (max-width: 1080px) {
-  /* Below this the sidebar costs more than it gives. A drawer is the right
-     answer; the mobile designs will say which. Until then it collapses to
-     icons so the content column keeps its width. */
-  .shell { grid-template-columns: 72px minmax(0, 1fr); }
-  .sidebar { padding: 20px var(--space-2); }
-  .sidebar__wordmark,
-  .sidebar__group-label,
-  .sidebar__link span,
-  .sidebar__user-text { display: none; }
-  .sidebar__link { justify-content: center; padding: var(--space-2); }
-  .sidebar__user { justify-content: center; }
-  .topbar { flex-wrap: wrap; }
+  /* One column. The sidebar leaves the grid entirely — see below. */
+  .shell { grid-template-columns: minmax(0, 1fr); }
+
+  .topbar__menu { display: inline-flex; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 60;
+    width: min(280px, 82vw);
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+    overflow-y: auto;
+    /* Off-canvas, and `visibility` rather than transform alone so a closed
+       drawer is out of the tab order as well as out of sight. */
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 180ms ease, visibility 180ms ease;
+  }
+
+  .shell[data-nav-open] .sidebar {
+    transform: none;
+    visibility: visible;
+  }
+
+  .shell__scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    width: 100%;
+    padding: 0;
+    background: var(--scrim);
+    border: none;
+    cursor: pointer;
+  }
+
+  /* The page behind must not scroll under an open drawer — on a phone that
+     reads as the drawer having come loose from the page. */
+  .is-nav-open body { overflow: hidden; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar { transition: none; }
+}
+
+/* ---------------------------------------------------------------------------
+ * Phone
+ * ------------------------------------------------------------------------ */
+
+@media (max-width: 720px) {
+  /* The bar carries four things and cannot hold them on one line. The menu
+     button, the screen name and the actions stay on the first; search — the
+     one that is inert anyway — takes the second. */
+  .topbar {
+    flex-wrap: wrap;
+    margin: var(--space-3) var(--space-3) 0;
+    padding: var(--space-3);
+    gap: var(--space-3);
+  }
+
+  /*
+    One row, not four.
+
+    Search is the thing that gives way, because it is inert on this build —
+    `SearchFilter` is not in the server's DEFAULT_FILTER_BACKENDS, so every
+    `search_fields` declaration in the catalog is dead and the input is
+    disabled. A dead control is not worth a row of a 390px phone. It comes
+    back with the feature.
+
+    What is left fits on one line: the menu button and the screen name hold
+    their size, the actions hold theirs, and the site picker takes what is
+    between them — it already shrinks and ellipsises rather than forcing the
+    bar wider.
+  */
+  .topbar__search { display: none; }
+
+  /*
+    `display: contents` dissolves the left group so its three children become
+    flex items of the bar itself. Without it the site picker is trapped in
+    the same box as the menu button and the screen name, and the three
+    together are wider than the phone — so the whole group took one row and
+    pushed the bell and help onto another, with nothing beside them.
+
+    Dissolved, each child can be placed on its own: the menu button, the
+    screen name and the actions share the top line, and the site picker —
+    the one that needs the room — takes the second.
+  */
+  .topbar__left {
+    display: contents;
+  }
+
+  .topbar__menu { order: 1; }
+  .topbar__chip { order: 2; margin-right: auto; }
+  .topbar__actions { order: 3; flex: none; }
+  .topbar__left > .topbar__site { order: 4; flex: 1 1 100%; }
+
+  .shell__content { padding: var(--space-4) var(--space-3) var(--space-5); }
+
+  /* A head that puts its action opposite the title stacks instead — at this
+     width side by side leaves the title one word per line. */
+  .page-head--split {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -389,7 +553,7 @@ dialog {
 .page-head__eyebrow {
   margin: 0;
   font-size: var(--text-overline);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -425,6 +589,16 @@ dialog {
   margin: 0;
   font-size: var(--text-caption);
   color: var(--text-primary);
+}
+
+/* More than one control opposite a page title. A single button needs no
+   wrapper; this is for the screens that have two. Wraps, so a narrow window
+   stacks them rather than pushing the title out of the head. */
+.page-head__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 /* ---------------------------------------------------------------------------
@@ -483,10 +657,18 @@ dialog {
   color: var(--text-secondary);
 }
 
+/* A poll that failed is not an all-clear, so it does not get the all-clear's
+   quiet grey. */
+.bell__empty--error {
+  color: var(--error);
+}
+
 .bell__list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  /* No gap: the rows carry their own padding, so a gap here would put dead
+     space between two things that both respond to a click. */
+  gap: 0;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -500,10 +682,35 @@ dialog {
   margin-right: calc(var(--space-1) * -1);
 }
 
+/*
+ * The whole row is the target, not just the words on it.
+ *
+ * `.bell__item` had no padding and `--clickable` had no rule at all, so the
+ * hit area was exactly the height of the text, the 12px gap between rows was
+ * dead, and nothing showed the row could be clicked. Padding moves onto the
+ * item and the list's gap comes off, so the area that lights up on hover is
+ * the same area that responds.
+ */
 .bell__item {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.bell__item--clickable {
+  cursor: pointer;
+}
+
+.bell__item--clickable:hover,
+.bell__item--clickable:focus-visible {
+  background: var(--surface-sunken);
+  outline: none;
+}
+
+.bell__item--clickable:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--border-focus) 40%, transparent);
 }
 
 .bell__level {

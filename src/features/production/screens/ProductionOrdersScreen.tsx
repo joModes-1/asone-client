@@ -78,7 +78,7 @@ export function ProductionOrdersScreen() {
   }
 
   return (
-    <AppShell title="Production orders">
+    <AppShell title="Production orders" searchHint="PO or center">
       <header className="page-head page-head--split">
         <div>
           <h1 className="page-head__title">Production Orders</h1>

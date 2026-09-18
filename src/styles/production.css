@@ -19,6 +19,15 @@
   border-radius: var(--radius-lg);
 }
 
+/* A filter band already inside a card. The card provides the surface and the
+   border, so repeating them here would draw a box inside a box. */
+.filter-bar--inline {
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+}
+
 .filter-bar__search {
   display: flex;
   align-items: center;
@@ -56,6 +65,24 @@
 
 .filter-bar__field > span { color: var(--text-secondary); }
 
+/* A yes/no filter, shaped like the fields beside it so the bar reads as one
+   row of controls rather than a row plus a stray checkbox. */
+.filter-bar__check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filter-bar__check input { cursor: pointer; }
+
 .filter-bar__field select {
   border: 0;
   background: none;
@@ -73,10 +100,14 @@
  * than `.ledger` so the orders and reports tables are not restyled from
  * under them.
  */
+/*
+ * Only the background. The uppercase overline headers that used to live here
+ * made production orders and shipments read a size smaller than Orders,
+ * Inventory, Users and the rest — the one visible difference between tables
+ * that are otherwise the same thing. Size, weight and case now come from
+ * `.ledger` like everywhere else.
+ */
 .ledger--production th {
-  font-size: var(--text-overline);
-  letter-spacing: var(--tracking-overline);
-  text-transform: uppercase;
   background: var(--surface-sunken);
 }
 
@@ -265,7 +296,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: 0 -6px 18px rgba(33, 35, 43, 0.06);
+  box-shadow: var(--shadow-lifted);
 }
 
 .compose__summary {
@@ -451,8 +482,17 @@ span.line-note { display: block; }
   color: var(--text-secondary);
 }
 
-/* The header above a table that is not the whole card. */
+/* The header above a table that is not the whole card.
+
+   A row, so a filter can sit opposite the title rather than above it and
+   push the table down. It wraps at narrow widths and the filter falls under
+   the title, which is the only sensible thing at phone width. */
 .table-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
   padding: var(--space-4) var(--space-5) 0;
 }
 

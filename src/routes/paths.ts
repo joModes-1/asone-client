@@ -12,6 +12,8 @@
 export const paths = {
   welcome: '/',
   signIn: '/sign-in',
+  /* The password gate. Every account starts behind it. */
+  setPassword: '/set-password',
   createAccount: '/create-account',
   dashboard: '/dashboard',
   schools: '/schools',

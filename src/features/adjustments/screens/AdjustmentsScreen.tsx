@@ -88,7 +88,7 @@ export function AdjustmentsScreen() {
   const open = rows.find((row) => row.id === openId) ?? null
 
   return (
-    <AppShell title="Inventory Adjustments">
+    <AppShell title="Inventory Adjustments" searchHint="SKU or reason">
       <header className="page-head page-head--split">
         <div>
           <h1 className="page-head__title">Inventory Adjustments</h1>
@@ -110,7 +110,7 @@ export function AdjustmentsScreen() {
         ]}
         active="adjustments"
         onSelect={(key) => {
-          if (key === 'transfers') navigate('/adjustments/transfers')
+          if (key === 'transfers') navigate('/transfers')
         }}
         label="Adjustment views"
       />

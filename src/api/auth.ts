@@ -148,9 +148,14 @@ export function updateMe(body: {
  * Requires the current password even though you are signed in, so a stolen
  * token alone cannot lock the owner out. Signs out every other session and
  * returns a fresh token pair, stored here for the same reason as sign-in.
+ *
+ * The one exception is the first-time gate, where the server accepts it
+ * without a current password — there the account has just signed in with the
+ * one-time password to reach this at all, and can do nothing else until it
+ * changes. See `SetPasswordScreen`.
  */
 export async function changePassword(input: {
-  current_password: string
+  current_password?: string
   new_password: string
 }): Promise<void> {
   const next = await post<Partial<Session>>('/auth/password/change/', input)

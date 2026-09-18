@@ -92,15 +92,27 @@ export interface PickingQueue {
  * A warehouse clerk is pinned to their own site by the server and passes
  * nothing; an all-locations role may narrow with `warehouse`.
  */
+export type PickingStatus = 'RELEASED' | 'PICKED'
+
 export function pickingQueue(params?: {
   warehouse?: number | null
+  /**
+   * One bucket of the backlog: RELEASED is still to pick, PICKED is off the
+   * shelf and waiting for a van. Omitted for both.
+   *
+   * The two tiles above the table are deliberately unaffected — they are the
+   * totals the filter is chosen from, so a tile that changed when you
+   * narrowed the table would remove the only thing saying what you narrowed.
+   */
+  status?: PickingStatus | null
   page?: number
   page_size?: number
 }) {
-  const { warehouse, ...rest } = params ?? {}
+  const { warehouse, status, ...rest } = params ?? {}
   return get<PickingQueue>('/orders/picking/queue/', {
     ...rest,
     ...(warehouse ? { warehouse } : {}),
+    ...(status ? { status } : {}),
   })
 }
 

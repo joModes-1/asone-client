@@ -26,6 +26,16 @@ interface ViewAll {
 
 interface PanelProps {
   title: string
+  /**
+   * One line under the title saying what the panel holds.
+   *
+   * Optional, and new: the dashboard's panels are self-explanatory from
+   * their titles, but a panel whose content is a grid of ticks is not, and
+   * the alternative was every caller writing the same `<p>` by hand under
+   * the header — which is how `.panel__subtitle` came to exist in two
+   * places already.
+   */
+  subtitle?: string
   /** A figure or note aligned to the right of the title. */
   meta?: ReactNode
   /** Shown when there is more than this panel is displaying. */
@@ -46,6 +56,7 @@ interface PanelProps {
 
 export function Panel({
   title,
+  subtitle,
   meta,
   viewAll,
   tone = 'surface',
@@ -60,7 +71,10 @@ export function Panel({
       aria-busy={busy || undefined}
     >
       <header className="panel__head">
-        <h2 className="panel__title">{title}</h2>
+        <div>
+          <h2 className="panel__title">{title}</h2>
+          {subtitle && <p className="panel__subtitle">{subtitle}</p>}
+        </div>
         {meta}
       </header>
 

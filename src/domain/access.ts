@@ -22,7 +22,8 @@
  * every request, so a 403 is always possible and must still be handled.
  */
 
-import type { AccessFunction, CurrentUser, Scope } from '@/api/types'
+import type { IdentityTone } from '@/components'
+import type { AccessFunction, CurrentUser, Role, Scope } from '@/api/types'
 
 /** Does this user hold this column of the access matrix? */
 export function can(user: CurrentUser | null, fn: AccessFunction): boolean {
@@ -205,6 +206,27 @@ export function canReadPackingList(user: CurrentUser | null): boolean {
 }
 
 /**
+ * Who has a warehouse dashboard — and so a notification bell.
+ *
+ * The split is on **scope, not role name**, the same line
+ * {@link seesWarehouseDashboard}'s caller `HomeScreen` already drew: a role
+ * scoped to schools gets the school screen, everybody else the warehouse
+ * one. Mirrors `dashboard/views.py::CanSeeWarehouseDashboard`, which refuses
+ * School Staff outright.
+ *
+ * This decides the bell as well as the screen because the bell reads
+ * `/dashboard/notifications/`, which sits behind that same permission. A
+ * school clerk was shown a bell that answered 403 on every poll and rendered
+ * "none unread" — a control that reported all clear while it was in fact
+ * forbidden. There is no school-side alert feed to point it at: the school
+ * dashboard returns counts, not graded conditions. If AsOne wants one, it is
+ * a new endpoint, and this predicate is where the bell would learn about it.
+ */
+export function seesWarehouseDashboard(user: CurrentUser | null): boolean {
+  return scopeOf(user) !== 'assigned_schools'
+}
+
+/**
  * True while the account is held at the password gate.
  *
  * The backend answers 403 on almost everything in this state — only
@@ -215,14 +237,56 @@ export function mustChangePassword(user: CurrentUser | null): boolean {
   return user?.must_change_password === true
 }
 
-export function fullName(user: CurrentUser | null): string {
+/**
+ * A colour per role, so a table of them can be read at a glance.
+ *
+ * Every role badge used to be the same blue, which made the Role column a
+ * column of identically-shaped blue shapes — the one thing it exists to
+ * distinguish was the thing it did not.
+ *
+ * Drawn from the identity colours rather than the semantic ones. Green means
+ * confirmed and red means wrong; a role is neither, and a Finance badge in
+ * red would read as a problem with the person rather than as their job.
+ *
+ * Grouped by what the role *is*, so the colours are learnable rather than
+ * arbitrary: the two all-locations leads share the authority colour, the two
+ * site-bound staff roles are the two site colours, and Finance stands alone
+ * because it is the only role that touches value.
+ */
+const ROLE_TONES: Record<Role, IdentityTone> = {
+  PROGRAM_LEAD: 'purple',
+  OPERATIONS_MANAGER: 'purple',
+  FINANCE: 'amber',
+  WAREHOUSE_STAFF: 'teal',
+  SCHOOL_STAFF: 'rose',
+}
+
+export function roleTone(role: Role | null | undefined): IdentityTone | 'neutral' {
+  return (role && ROLE_TONES[role]) || 'neutral'
+}
+
+/**
+ * The three fields a name or an avatar is drawn from.
+ *
+ * Structural rather than `CurrentUser`, because both of these are equally
+ * true of a `UserAdmin` — the shape the users list and the profile screen
+ * hold — and asking for the whole signed-in user meant those screens
+ * rewriting the same two lines by hand.
+ */
+export interface Named {
+  email: string
+  first_name?: string
+  last_name?: string
+}
+
+export function fullName(user: Named | null): string {
   if (!user) return ''
-  const name = `${user.first_name} ${user.last_name}`.trim()
+  const name = `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim()
   return name || user.email
 }
 
 /** Initials for an avatar, falling back to the email's first letter. */
-export function initials(user: CurrentUser | null): string {
+export function initials(user: Named | null): string {
   if (!user) return ''
   const first = user.first_name?.[0] ?? ''
   const last = user.last_name?.[0] ?? ''
@@ -263,4 +327,72 @@ export function canMoveStockBetweenWarehouses(user: CurrentUser | null): boolean
     user.role === 'OPERATIONS_MANAGER' ||
     user.role === 'FINANCE'
   )
+}
+
+/**
+ * Who may read the uniform kit catalogue — F07.
+ *
+ * School Staff and Finance, plus both leads. Not warehouse staff, and that is
+ * the interesting part: a kit is a way of *ordering*, and F33 turns it into
+ * component SKUs the moment an order is placed. A warehouse never picks,
+ * packs or counts a kit, so it has nothing to read here.
+ *
+ * The design draws "Uniform Kits" in a sidebar footed "Warehouse Lead", but
+ * that is not one of AsOne's five roles — the same placeholder the dashboard
+ * frame uses. Taken as a mock-up caption rather than an access decision.
+ *
+ * Mirrors `catalog/views.py::KitViewSet.read_roles`.
+ */
+export function canReadKits(user: CurrentUser | null): boolean {
+  if (!user) return false
+  return (
+    user.role === 'SCHOOL_STAFF' ||
+    user.role === 'FINANCE' ||
+    user.role === 'PROGRAM_LEAD' ||
+    user.role === 'OPERATIONS_MANAGER'
+  )
+}
+
+/**
+ * Who may read the stock ledger — F48, the audit trail.
+ *
+ * Warehouse Staff and Finance, plus both leads. **Not School Staff**, which
+ * is the only interesting part: a school reads stock levels at the warehouse
+ * that serves it, but the ledger behind those levels is every movement at
+ * every site the reader may see, including other schools' picks and
+ * shipments. AsOne's matrix does not give them that, and the server does not
+ * either.
+ *
+ * Without this the Stock History entry was `requires: null` — visible to all
+ * five roles, and a guaranteed 403 for one of them. The same mistake the
+ * notification bell had, and the reason both are predicates now.
+ *
+ * Mirrors `inventory/views.py::StockMovementViewSet.read_roles` together with
+ * `MasterDataAccess`, which adds the two leads to whatever a viewset names.
+ */
+export function canReadStockHistory(user: CurrentUser | null): boolean {
+  if (!user) return false
+  return (
+    user.role === 'WAREHOUSE_STAFF' ||
+    user.role === 'FINANCE' ||
+    user.role === 'PROGRAM_LEAD' ||
+    user.role === 'OPERATIONS_MANAGER'
+  )
+}
+
+/**
+ * Who may read prices — F04.
+ *
+ * The same set as kits, and for a different reason: a school sees the price
+ * list it orders from, Finance reads costed reports, and the leads set the
+ * prices. A warehouse clerk picks garments and never quotes one, so the
+ * matrix gives them no price access at all.
+ *
+ * `requires: null` on the Pricing nav entry put it in a warehouse clerk's
+ * sidebar and led them to a guaranteed 403.
+ *
+ * Mirrors `catalog/views.py::GarmentPriceViewSet.read_roles`.
+ */
+export function canReadPrices(user: CurrentUser | null): boolean {
+  return canReadKits(user)
 }

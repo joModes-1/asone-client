@@ -25,17 +25,24 @@ import { AuthProvider } from '@/features/auth/AuthProvider'
 import { NavGroupsProvider } from '@/features/shell/NavGroupsProvider'
 import { WarehouseFilterProvider } from '@/features/shell/WarehouseFilterProvider'
 import { CreateAccountScreen } from '@/features/auth/screens/CreateAccountScreen'
+import { SetPasswordScreen } from '@/features/auth/screens/SetPasswordScreen'
 import { SignInScreen } from '@/features/auth/screens/SignInScreen'
 import { WelcomeScreen } from '@/features/auth/screens/WelcomeScreen'
 import { HomeScreen } from '@/features/dashboard/screens/HomeScreen'
 import { ReportsIndexScreen } from '@/features/reports/screens/ReportsIndexScreen'
+import { PriceListScreen } from '@/features/reports/screens/PriceListScreen'
 import { StockReportScreen } from '@/features/reports/screens/StockReportScreen'
+import { PlaceOrderScreen } from '@/features/orders/screens/PlaceOrderScreen'
 import { OrderDetailScreen } from '@/features/orders/screens/OrderDetailScreen'
 import { OrdersListScreen } from '@/features/orders/screens/OrdersListScreen'
-import { UserDetailScreen } from '@/features/users/screens/UserDetailScreen'
 import { UsersRolesScreen } from '@/features/users/screens/UsersRolesScreen'
 import { CreateProductionOrderScreen } from '@/features/production/screens/CreateProductionOrderScreen'
 import { ProductionOrderDetailScreen } from '@/features/production/screens/ProductionOrderDetailScreen'
+import { UserProfileScreen } from '@/features/users/screens/UserProfileScreen'
+import { CreateKitScreen } from '@/features/kits/screens/CreateKitScreen'
+import { EditKitScreen } from '@/features/kits/screens/EditKitScreen'
+import { KitDetailScreen } from '@/features/kits/screens/KitDetailScreen'
+import { KitsScreen } from '@/features/kits/screens/KitsScreen'
 import { AdjustmentsScreen } from '@/features/adjustments/screens/AdjustmentsScreen'
 import { NewAdjustmentScreen } from '@/features/adjustments/screens/NewAdjustmentScreen'
 import { NewTransferScreen } from '@/features/adjustments/screens/NewTransferScreen'
@@ -46,7 +53,13 @@ import { ReceivingScreen } from '@/features/receiving/screens/ReceivingScreen'
 import { ShipmentDetailScreen } from '@/features/shipments/screens/ShipmentDetailScreen'
 import { PickingScreen } from '@/features/shipments/screens/PickingScreen'
 import { ShipmentsScreen } from '@/features/shipments/screens/ShipmentsScreen'
-import { canMoveStockBetweenWarehouses, canReadSchoolOrders } from '@/domain/access'
+import {
+  canMoveStockBetweenWarehouses,
+  canReadKits,
+  canReadSchoolOrders,
+} from '@/domain/access'
+import { InventoryScreen } from '@/features/inventory/screens/InventoryScreen'
+import { StockHistoryScreen } from '@/features/inventory/screens/StockHistoryScreen'
 import { SchoolDetailScreen } from '@/features/catalog/screens/SchoolDetailScreen'
 import { SchoolsScreen } from '@/features/catalog/screens/SchoolsScreen'
 import { WarehouseDetailScreen } from '@/features/catalog/screens/WarehouseDetailScreen'
@@ -68,6 +81,8 @@ const SCREENS: Record<string, ComponentType> = {
   '/dashboard': HomeScreen,
   '/reports': ReportsIndexScreen,
   '/orders': OrdersListScreen,
+  '/inventory': InventoryScreen,
+  '/stock-history': StockHistoryScreen,
   '/schools': SchoolsScreen,
   '/warehouses': WarehousesScreen,
   '/tailoring-centers': TailoringCentersScreen,
@@ -76,6 +91,7 @@ const SCREENS: Record<string, ComponentType> = {
   '/backorders': BackordersScreen,
   '/users': UsersRolesScreen,
   '/adjustments': AdjustmentsScreen,
+  '/kits': KitsScreen,
   // The landing view is the picking backlog; despatched shipments are the
   // history behind it.
   '/shipments': PickingScreen,
@@ -98,6 +114,10 @@ export function AppRoutes() {
               <Routes>
           <Route path={paths.welcome} element={<WelcomeScreen />} />
           <Route path={paths.signIn} element={<SignInScreen />} />
+          {/* Outside RequireAuth's guard: a gated user is redirected here by
+              it, so guarding this route with it would be a loop. The screen
+              checks the session itself. */}
+          <Route path={paths.setPassword} element={<SetPasswordScreen />} />
           <Route path={paths.createAccount} element={<CreateAccountScreen />} />
 
           {/*
@@ -105,6 +125,24 @@ export function AppRoutes() {
             one. They are listed before the generated routes so a more
             specific path is matched first.
           */}
+          {/*
+            Before the :orderId route, or "new" is parsed as an order id.
+
+            Gated on `school_orders`, which is narrower than the list it is
+            reached from: the leads and Finance may *read* every order, but
+            AsOne's matrix leaves School Orders Entry to school staff alone.
+          */}
+          <Route
+            path="/orders/new"
+            element={
+              <RequireAuth>
+                <RequireAccess requires="school_orders">
+                  <PlaceOrderScreen />
+                </RequireAccess>
+              </RequireAuth>
+            }
+          />
+
           <Route
             path="/orders/:orderId"
             element={
@@ -116,7 +154,6 @@ export function AppRoutes() {
             }
           />
 
-          {/* Before the :orderId route, or "new" is parsed as an order id. */}
           <Route
             path="/shipments/history"
             element={
@@ -148,8 +185,61 @@ export function AppRoutes() {
             as Finance, where the adjustment screens are Finance alone. Gating
             them together would deny the leads a feature the matrix grants.
           */}
+          {/*
+            Before the generated /kits route, so "new" is not parsed as a kit
+            id. Both are gated on `table_updates`, wider than the read gate on
+            the list: a school clerk reads kits to order from them and never
+            builds one.
+          */}
           <Route
-            path="/adjustments/transfers/new"
+            path="/kits/new"
+            element={
+              <RequireAuth>
+                <RequireAccess requires="table_updates">
+                  <CreateKitScreen />
+                </RequireAccess>
+              </RequireAuth>
+            }
+          />
+
+          {/* Managing an account is the Table Updates column, same as the
+              list it is reached from. */}
+          <Route
+            path="/users/:userId"
+            element={
+              <RequireAuth>
+                <RequireAccess requires="table_updates">
+                  <UserProfileScreen />
+                </RequireAccess>
+              </RequireAuth>
+            }
+          />
+
+          {/* Before /kits/:kitId, or "3/edit" never matches. */}
+          <Route
+            path="/kits/:kitId/edit"
+            element={
+              <RequireAuth>
+                <RequireAccess requires="table_updates">
+                  <EditKitScreen />
+                </RequireAccess>
+              </RequireAuth>
+            }
+          />
+
+          <Route
+            path="/kits/:kitId"
+            element={
+              <RequireAuth>
+                <RequireAccess requires={canReadKits}>
+                  <KitDetailScreen />
+                </RequireAccess>
+              </RequireAuth>
+            }
+          />
+
+          <Route
+            path="/transfers/new"
             element={
               <RequireAuth>
                 <RequireAccess requires={canMoveStockBetweenWarehouses}>
@@ -160,7 +250,7 @@ export function AppRoutes() {
           />
 
           <Route
-            path="/adjustments/transfers"
+            path="/transfers"
             element={
               <RequireAuth>
                 <RequireAccess requires={canMoveStockBetweenWarehouses}>
@@ -209,6 +299,23 @@ export function AppRoutes() {
               <RequireAuth>
                 <RequireAccess requires={null}>
                   <StockReportScreen />
+                </RequireAccess>
+              </RequireAuth>
+            }
+          />
+
+          {/*
+            Pricing's own report. Guarded on `financial_reports`, the column
+            that opens the Reports destination and the Pricing category
+            within it — not on `table_updates`, which is who may *set* a
+            price rather than who may read the list.
+          */}
+          <Route
+            path="/reports/price-list"
+            element={
+              <RequireAuth>
+                <RequireAccess requires="financial_reports">
+                  <PriceListScreen />
                 </RequireAccess>
               </RequireAuth>
             }
@@ -265,20 +372,6 @@ export function AppRoutes() {
             }
           />
 
-          {/*
-            Reached from a Users row, not the sidebar — same reasoning and
-            same guard as `/schools/:id` above.
-          */}
-          <Route
-            path="/users/:id"
-            element={
-              <RequireAuth>
-                <RequireAccess requires="table_updates">
-                  <UserDetailScreen />
-                </RequireAccess>
-              </RequireAuth>
-            }
-          />
 
               <Route path="*" element={<Navigate to={paths.welcome} replace />} />
               </Routes>

@@ -6,8 +6,20 @@
  * grouped by school rather than listed by order — the unit of work is the
  * van, and the button loads it.
  *
- * Hidden entirely when nothing is waiting. An empty panel above a full table
- * is furniture; the table below already says what has gone out.
+ * ---------------------------------------------------------------------------
+ * It says so when it is empty, rather than disappearing
+ * ---------------------------------------------------------------------------
+ * This used to `return null` with nothing picked, on the reasoning that an
+ * empty panel above a full table is furniture. That reasoning was wrong about
+ * what this panel is: it is not a summary of the table below, it is the
+ * **only** place in the app a van is loaded.
+ *
+ * So vanishing made "how do I despatch?" answerable only by already knowing.
+ * Somebody looking for it found an empty screen, no control, and no clue that
+ * the missing step was upstream — a picked order. Now it names the condition.
+ *
+ * Still hidden for a role that may not despatch at all: telling somebody
+ * about a control they will never be allowed is noise, not help.
  */
 
 import { useState } from 'react'
@@ -32,7 +44,28 @@ export function DespatchQueue() {
   if (queue.isLoading) return <SkeletonRows rows={2} />
 
   const rows = queue.data ?? []
-  if (rows.length === 0) return null
+
+  if (rows.length === 0) {
+    return (
+      <section className="despatch">
+        <header className="despatch__head">
+          <h2 className="despatch__title">Ready to Despatch</h2>
+          {/*
+            `.panel__clear`, the one-line "nothing here" the hub console's
+            panels already use — not the full `EmptyState`, which is sized
+            for an empty *table* and left a 400px hole above a full one.
+            Names the missing step rather than only the absence: the queue
+            fills from picking, and an unpaid order never reaches picking.
+          */}
+          <p className="panel__clear">
+            No van is ready to load. A school appears here once one of its
+            orders has been picked — and an order still awaiting payment
+            cannot be picked until Finance releases it.
+          </p>
+        </header>
+      </section>
+    )
+  }
 
   return (
     <section className="despatch">

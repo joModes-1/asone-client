@@ -115,8 +115,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // A rejected refresh token: the session really is over.
   useEffect(
     () =>
-      onSessionExpired(() => {
+      onSessionExpired((reason) => {
         clear()
+        // Two different events wearing one message until now. "Superseded"
+        // is not a fault and not an expiry — somebody used this account
+        // somewhere else, and the person reading this needs to know that
+        // rather than wonder why the system dropped them.
+        if (reason === 'superseded') {
+          snackbar.warning(
+            'Signed in somewhere else',
+            'This account was used to sign in on another device or browser, so this session ended. Only one device can be signed in at a time.',
+          )
+          return
+        }
         snackbar.warning(
           'You have been signed out',
           'That sign-in is no longer valid. Please sign in again.',

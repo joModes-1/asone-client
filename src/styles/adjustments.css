@@ -229,7 +229,8 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--space-3) var(--space-4);
-  margin: 0 0 var(--space-4);
+  /* Spacing between dialog blocks comes from `.modal__body`'s gap. */
+  margin: 0;
 }
 
 .detail-list dt {
@@ -248,7 +249,7 @@
 
 .detail-notes {
   padding: var(--space-4);
-  margin-top: var(--space-4);
+  margin-top: 0;
   background: var(--surface-sunken);
   border-radius: var(--radius-lg);
 }
@@ -349,7 +350,7 @@ button.ledger__link {
 
 /* The dialog's own padding already frames the table; a second inset makes
    the rows look indented rather than aligned with everything above them. */
-.modal__body .table-scroll { margin: 0 0 var(--space-4); }
+.modal__body .table-scroll { margin: 0; }
 
 .modal__body .ledger tfoot td {
   border-top: 1px solid var(--border);
@@ -382,7 +383,7 @@ button.ledger__link {
 }
 
 .shortfalls__sku {
-  font-family: var(--font-mono, inherit);
+  font-family: var(--font-mono);
   font-weight: var(--weight-bold);
   color: var(--text-primary);
 }

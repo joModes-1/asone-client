@@ -21,7 +21,16 @@
 import { useState } from 'react'
 import { UserPlus } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
-import { Button, TabBar } from '@/components'
+import {
+  Alert,
+  Badge,
+  Button,
+  Pagination,
+  Panel,
+  SkeletonRows,
+  TabBar,
+  snackbar,
+} from '@/components'
 import { AppShell } from '@/features/shell/components/AppShell'
 import { AddUserModal } from '../components/AddUserModal'
 import { PermissionsMatrix } from '../components/PermissionsMatrix'
@@ -29,7 +38,7 @@ import { RegistrationReviewModal } from '../components/RegistrationReviewModal'
 import { UsersTable } from '../components/UsersTable'
 import { usePendingRegistrations } from '../hooks/useRegistrationRequests'
 import { useRoles } from '../hooks/useRoles'
-import { useCreateUser, useUsers } from '../hooks/useUsers'
+import { USERS_PAGE_SIZE, useCreateUser, useUsers } from '../hooks/useUsers'
 import type { RegistrationRequest } from '@/api/types'
 
 const TABS = [
@@ -47,14 +56,15 @@ export function UsersRolesScreen() {
     : 'users'
 
   const [modalOpen, setModalOpen] = useState(false)
-  const [justAdded, setJustAdded] = useState(false)
+  const [page, setPage] = useState(1)
 
-  const usersQuery = useUsers()
+  const usersQuery = useUsers(page)
   const rolesQuery = useRoles()
   const createUser = useCreateUser()
   const pendingQuery = usePendingRegistrations()
 
   const users = usersQuery.data?.results ?? []
+  const userCount = usersQuery.data?.count ?? 0
   const roles = rolesQuery.data ?? []
   const pending = pendingQuery.data?.results ?? []
 
@@ -102,7 +112,7 @@ export function UsersRolesScreen() {
   }
 
   return (
-    <AppShell title="Users & Roles">
+    <AppShell title="Users & Roles" searchHint="name or email">
       <header className="page-head page-head--split">
         <div>
           <h1 className="page-head__title">Users & Roles</h1>
@@ -119,10 +129,26 @@ export function UsersRolesScreen() {
 
       <TabBar label="Users & Roles views" active={tab} onSelect={selectTab} tabs={TABS} />
 
-      {justAdded && (
-        <div className="alert alert--success" role="status">
-          User added successfully
-        </div>
+      {/*
+        Named where the work is, not only on the dashboard. A request sits
+        here until a lead acts on it, and the row it becomes looks much like
+        an account — so the count is said out loud above the table rather
+        than left to be noticed.
+
+        Pending requests are shown on every page of the table, because they
+        are not part of the paged set: they sit above it, and burying them on
+        page three would hide the only rows that need a decision.
+      */}
+      {tab === 'users' && pending.length > 0 && (
+        <Alert tone="warning">
+          <strong>
+            {pending.length === 1
+              ? '1 person is waiting for an account.'
+              : `${pending.length} people are waiting for an account.`}
+          </strong>{' '}
+          They appear at the top of the list below — open one to approve it or
+          turn it down. Nothing is created until you do.
+        </Alert>
       )}
 
       {tab === 'users' && (
@@ -136,19 +162,60 @@ export function UsersRolesScreen() {
             loading={usersQuery.isLoading}
             onReviewPending={openReview}
           />
+
+          {userCount > 0 && (
+            <div className="table-card__footer">
+              <Pagination
+                page={page}
+                pageCount={Math.max(1, Math.ceil(userCount / USERS_PAGE_SIZE))}
+                totalItems={userCount}
+                pageSize={USERS_PAGE_SIZE}
+                onChange={setPage}
+                noun="accounts"
+              />
+            </div>
+          )}
         </div>
       )}
 
-      {(tab === 'roles' || tab === 'permissions') && (
-        <div className="panel">
-          <header className="panel__head">
-            <h2 className="panel__title">Role Permissions Matrix Preview</h2>
-          </header>
-          <p className="panel__subtitle">System functions authorized by user role profiles.</p>
-          <div className="panel__body">
-            <PermissionsMatrix roles={roles} loading={rolesQuery.isLoading} />
-          </div>
-        </div>
+      {/*
+        Roles and Permissions used to render the identical matrix, so two
+        tabs showed one view and clicking between them did nothing. They
+        answer different questions and now show different things: Roles is
+        the five roles and what each one is *for*; Permissions is the grid of
+        which function each may reach.
+      */}
+      {tab === 'roles' && (
+        <Panel title="Roles" subtitle="The five roles AsOne's access matrix defines.">
+          {rolesQuery.isLoading ? (
+            <SkeletonRows rows={5} />
+          ) : (
+            <ul className="role-list">
+              {roles.map((role) => (
+                <li key={role.value} className="role-list__item">
+                  <div className="role-list__head">
+                    <h3 className="role-list__name">{role.label}</h3>
+                    <Badge tone={role.requires_site ? 'info' : 'neutral'}>
+                      {role.requires_site
+                        ? `Assigned to one ${role.requires_site}`
+                        : 'All locations'}
+                    </Badge>
+                  </div>
+                  <p className="role-list__summary">{role.summary}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      )}
+
+      {tab === 'permissions' && (
+        <Panel
+          title="Role Permissions Matrix"
+          subtitle="Which system functions each role may reach."
+        >
+          <PermissionsMatrix roles={roles} loading={rolesQuery.isLoading} />
+        </Panel>
       )}
 
       {modalOpen && (
@@ -157,8 +224,16 @@ export function UsersRolesScreen() {
           onClose={() => setModalOpen(false)}
           onCreate={async (input) => {
             const created = await createUser.mutateAsync(input)
-            setJustAdded(true)
-            setTimeout(() => setJustAdded(false), 4000)
+            /*
+              The shared snackbar, not a hand-rolled banner on a four-second
+              timer. Every other confirmation in the app arrives this way,
+              and this one used to be a `div` that pushed the table down and
+              then let it jump back up.
+            */
+            snackbar.success(
+              `${input.first_name} ${input.last_name} added`,
+              `Signs in as ${input.email}. They must set their own password first.`,
+            )
             return created
           }}
         />

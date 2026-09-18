@@ -12,6 +12,12 @@
 import { useQuery } from '@tanstack/react-query'
 import * as procurement from '@/api/procurement'
 
+/*
+  Deliberately not `LIST_PAGE_SIZE`. This is not a paginated list — there are
+  no controls under the card — it is one bounded fetch that the chips above
+  it are counted over. At the list size the chips would describe the first
+  ten of a centre's orders and read as though that were all of them.
+*/
 const PAGE_SIZE = 50
 
 export function useTailoringCenterProductionOrders(tailoringCenterId: number) {

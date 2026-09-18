@@ -20,6 +20,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import * as ordersApi from '@/api/orders'
 import type { SchoolOrder, SchoolOrderStatus } from '@/api/types'
+import { LIST_PAGE_SIZE } from '@/api/pageSize'
 
 /** Guard against pulling an unbounded list if the data ever grows. */
 const MAX_PAGES = 10
@@ -65,7 +66,7 @@ export interface OrdersPage {
 
 /** Rows per page. One constant, used for the request and the page count, so
  *  the two cannot disagree. */
-const PAGE_SIZE = 15
+const PAGE_SIZE = LIST_PAGE_SIZE
 
 export function useOrders(tab: OrdersTab, page: number): OrdersPage {
   const multi = tab.statuses.length > 1

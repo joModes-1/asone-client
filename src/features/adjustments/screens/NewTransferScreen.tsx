@@ -129,7 +129,7 @@ export function NewTransferScreen() {
         ...(notes.trim() ? { notes: notes.trim() } : {}),
         lines: lines.map((line) => ({ sku: line.sku as number, quantity: line.quantity })),
       },
-      { onSuccess: () => navigate('/adjustments/transfers') },
+      { onSuccess: () => navigate('/transfers') },
     )
   }
 
@@ -142,7 +142,7 @@ export function NewTransferScreen() {
   return (
     <AppShell title="Warehouse Transfers">
       <nav className="crumbs" aria-label="Breadcrumb">
-        <Link to="/adjustments/transfers">Warehouse Transfers</Link>
+        <Link to="/transfers">Warehouse Transfers</Link>
         <ChevronRight size={14} aria-hidden />
         <span aria-current="page">New Transfer Request</span>
       </nav>
@@ -400,7 +400,7 @@ export function NewTransferScreen() {
         <div className="compose__actions">
           <Button
             variant="secondary"
-            onClick={() => navigate('/adjustments/transfers')}
+            onClick={() => navigate('/transfers')}
             disabled={postTransfer.isPending}
           >
             Cancel

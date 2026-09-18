@@ -20,7 +20,7 @@ export function PermissionsMatrix({ roles, loading }: PermissionsMatrixProps) {
   if (loading || roles.length === 0) return null
 
   return (
-    <div className="scroll-x">
+    <div className="table-scroll">
       <table className="ledger ledger--matrix">
         <thead>
           <tr>

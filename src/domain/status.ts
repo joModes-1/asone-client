@@ -184,6 +184,18 @@ export function alertPath(kind: string, refId?: number | null): string | null {
       return paths.backorders
     case 'registrations_pending':
       return refId ? `${paths.users}?review=${refId}` : paths.users
+
+    /*
+      The school's own kinds. Each lands where the school can act: a single
+      parcel opens the order it belongs to, because that is where Confirm
+      Delivery Received lives; several stay a rollup and go to the list.
+    */
+    case 'deliveries_to_confirm':
+      return refId ? `${paths.orders}/${refId}` : paths.orders
+    case 'school_orders_unpaid':
+      return paths.orders
+    case 'school_backorders':
+      return paths.orders
     default:
       return null
   }

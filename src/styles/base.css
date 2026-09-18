@@ -13,10 +13,12 @@
 @import './orders.css';
 @import './reports.css';
 @import './locations.css';
+@import './inventory.css';
 @import './receiving.css';
 @import './production.css';
 @import './users.css';
 @import './adjustments.css';
+@import './kits.css';
 /* Last: the print rules override screen layout by design. */
 @import './print.css';
 

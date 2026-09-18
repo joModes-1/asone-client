@@ -259,7 +259,7 @@
   background: none;
   font: inherit;
   font-size: var(--text-h3);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   color: var(--text-primary);
   cursor: pointer;
 }
@@ -279,7 +279,19 @@
  * Table card — the table and its footer share one bordered surface
  * ------------------------------------------------------------------------ */
 
+/*
+ * `min-width: 0` is what makes the table inside it scroll.
+ *
+ * A flex or grid item defaults to `min-width: auto`, which refuses to shrink
+ * below its content — so a wide `.ledger` pushed this card past the viewport
+ * and the *page* scrolled sideways instead of the table. Measured at 390px:
+ * every table screen overflowed, the worst by 90px.
+ *
+ * `overflow: hidden` was already here for the rounded corners and does not
+ * help: the card had grown, so there was nothing left to clip.
+ */
 .table-card {
+  min-width: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -298,15 +310,32 @@
 .table-card .empty { border: 0; border-radius: 0; }
 
 /* Order number reads as the link it is. */
-.ledger__link {
+/*
+ * `td.` prefixed as well as bare, and for the documented reason: `.ledger td`
+ * is an element plus a class, which outranks a single class whatever the
+ * source order, and silently wins `color`. Without the second selector a
+ * link *cell* renders in body colour while a link *inside* a cell renders
+ * correctly — which is how the SKU column came out black.
+ */
+.ledger__link,
+.ledger td.ledger__link {
   color: var(--accent-hover);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   text-decoration: none;
 }
 
-.ledger__link:hover { text-decoration: underline; }
+.ledger__link:hover,
+.ledger td.ledger__link:hover { text-decoration: underline; }
 
-.ledger__strong { font-weight: var(--weight-bold); }
+/*
+ * Semibold, matching the Garment column on Inventory.
+ *
+ * This is the class every table uses for "the name the row is about" — the
+ * school on Orders, the centre on Tailoring Centers. It was bold while
+ * Inventory's equivalent was semibold, which is a difference you notice
+ * switching tabs without being able to name it. Inventory is the reference.
+ */
+.ledger__strong { font-weight: var(--weight-semibold); }
 
 .order-total__value { font-weight: var(--weight-bold); }
 
@@ -332,7 +361,7 @@
 .crumbs__link { color: var(--text-secondary); text-decoration: none; }
 .crumbs__link:hover { text-decoration: underline; }
 .crumbs__sep { color: var(--text-muted); flex-shrink: 0; }
-.crumbs__current { color: var(--accent-hover); font-weight: 500; }
+.crumbs__current { color: var(--accent-hover); font-weight: var(--weight-medium); }
 
 /* ---------------------------------------------------------------------------
  * Status trail
@@ -360,7 +389,7 @@
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-pill);
   font-size: var(--text-body);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   white-space: nowrap;
 }
 
@@ -555,7 +584,7 @@
     /* One slip per sheet: they travel with different boxes. */
     page-break-after: always;
     padding: 24px;
-    color: #000;
+    color: var(--print-ink);
   }
 
   .slip:last-child { page-break-after: auto; }
@@ -608,7 +637,7 @@
 .slip__table th,
 .slip__table td {
   padding: 6px 8px;
-  border-bottom: 1px solid #999;
+  border-bottom: 1px solid var(--print-rule);
   text-align: left;
 }
 

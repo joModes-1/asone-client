@@ -30,5 +30,18 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     return <Navigate to={paths.signIn} replace state={{ from: location.pathname }} />
   }
 
+  /*
+    Not cosmetic, unlike the rest of this guard.
+
+    The server refuses **every** request from an account that still holds the
+    password it was handed — `403 "Set a new password before using the
+    system."` Letting a gated user through drew the whole shell with nothing
+    in it: an empty sidebar, "Your dashboard could not be loaded", and no
+    hint that one step was missing. They are sent to take it instead.
+  */
+  if (status === 'gated' && location.pathname !== paths.setPassword) {
+    return <Navigate to={paths.setPassword} replace />
+  }
+
   return <>{children}</>
 }

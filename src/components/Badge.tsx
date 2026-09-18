@@ -8,10 +8,28 @@
 
 import type { ReactNode } from 'react'
 
-export type Tone = 'success' | 'warning' | 'error' | 'info' | 'neutral' | 'purple'
+/**
+ * What something *is* — good, bad, or worth a look.
+ *
+ * Anything that carries a judgement uses these, and only these. `Alert` is
+ * built on them, which is why it takes a `Tone` and not the identity
+ * colours below: an alert is a judgement by definition.
+ */
+export type Tone = 'success' | 'warning' | 'error' | 'info' | 'neutral'
+
+/**
+ * Which one of several — where no value is better than another.
+ *
+ * The five roles, today. Kept apart from `Tone` because green means
+ * confirmed and red means wrong, so a role wearing either would read as a
+ * verdict on the person rather than as their job. See the identity colours
+ * in tokens.css; `domain/access.roleTone` does the mapping.
+ */
+export type IdentityTone = 'purple' | 'teal' | 'amber' | 'rose'
 
 interface BadgeProps {
-  tone?: Tone
+  /** A badge is the one place both kinds of colour are legitimate. */
+  tone?: Tone | IdentityTone
   children: ReactNode
 }
 

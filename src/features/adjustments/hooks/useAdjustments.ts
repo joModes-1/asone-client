@@ -13,9 +13,10 @@ import * as inventoryApi from '@/api/inventory'
 import { snackbar } from '@/components'
 import { formatSigned } from '@/domain/adjustments'
 import type { InventoryAdjustment } from '@/api/types'
+import { LIST_PAGE_SIZE } from '@/api/pageSize'
 
-export const ADJUSTMENTS_PAGE_SIZE = 15
-export const TRANSFERS_PAGE_SIZE = 15
+export const ADJUSTMENTS_PAGE_SIZE = LIST_PAGE_SIZE
+export const TRANSFERS_PAGE_SIZE = LIST_PAGE_SIZE
 
 /**
  * The reason codes table.

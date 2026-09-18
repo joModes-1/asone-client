@@ -83,7 +83,7 @@ export function OrdersListScreen() {
   }
 
   return (
-    <AppShell title="Orders">
+    <AppShell title="Orders" searchHint="order or school">
       <header className="page-head page-head--split">
         <div>
           <h1 className="page-head__title">Orders</h1>

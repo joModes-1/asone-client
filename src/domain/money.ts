@@ -118,3 +118,13 @@ export function formatQuantity(value: number | null | undefined): string {
   if (value === null || value === undefined) return '—'
   return value.toLocaleString('en-UG')
 }
+
+/**
+ * "+120" or "-15" — a ledger movement's signed quantity (see `StockMovement`:
+ * positive into the warehouse, negative out of it). `formatQuantity` alone
+ * drops the sign on a positive number, which is the one case a movement
+ * ledger cannot afford to be ambiguous about.
+ */
+export function formatSignedQuantity(value: number): string {
+  return value > 0 ? `+${formatQuantity(value)}` : formatQuantity(value)
+}

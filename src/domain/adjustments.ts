@@ -38,7 +38,7 @@
  * screen that hard-codes seven strings breaks the first time they add one.
  */
 
-import type { Tone } from '@/components'
+import type { IdentityTone, Tone } from '@/components'
 import type { ReasonCode } from '@/api/types'
 
 export type AdjustmentKind = 'RETURN' | 'TRANSFER' | 'LOSS' | 'DAMAGED' | 'CORRECTION'
@@ -144,7 +144,7 @@ export function typeLabel(code: string | undefined): string {
   }
 }
 
-export function typeTone(code: string | undefined): Tone {
+export function typeTone(code: string | undefined): Tone | IdentityTone {
   switch (kindOfCode(code)) {
     case 'RETURN':
       return 'info'

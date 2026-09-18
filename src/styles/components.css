@@ -167,7 +167,13 @@
 .badge--warning { background: var(--warning-bg); color: var(--warning); }
 .badge--error   { background: var(--error-bg);   color: var(--error); }
 .badge--info    { background: var(--info-bg);    color: var(--info); }
-.badge--purple  { background: #f3e8ff;           color: #9333ea; }
+.badge--purple  { background: var(--violet-bg);   color: var(--violet); }
+
+/* Identity colours — see tokens.css. Used to tell roles apart, where no
+   value is better than another and the semantic tones would imply one. */
+.badge--teal    { background: var(--teal-bg);     color: var(--teal); }
+.badge--amber   { background: var(--amber-bg);    color: var(--amber); }
+.badge--rose    { background: var(--rose-bg);     color: var(--rose); }
 .badge--neutral { background: var(--surface-sunken); color: var(--text-secondary); }
 
 /* Label/value pairs — a record's detail panel. */
@@ -719,6 +725,21 @@ button.page-dots__dot {
   gap: var(--space-5);
 }
 
+/*
+ * Two fields that read as one — first and last name. Stacks below the
+ * narrowest phone the auth card is drawn for, where side by side leaves
+ * neither wide enough to show what has been typed.
+ */
+.signin__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 420px) {
+  .signin__row { grid-template-columns: 1fr; }
+}
+
 .signin__forgot {
   display: flex;
   justify-content: flex-end;
@@ -1199,7 +1220,7 @@ button.page-dots__dot {
 .snackbar__message {
   margin: 0;
   font-size: var(--text-body);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   color: var(--text-primary);
 }
 
@@ -1369,7 +1390,7 @@ button.page-dots__dot {
   place-items: center;
 }
 
-.modal-host::backdrop { background: rgba(33, 35, 43, 0.45); }
+.modal-host::backdrop { background: var(--scrim); }
 
 .modal {
   width: min(100% - 2 * var(--space-5), 440px);
@@ -1379,7 +1400,7 @@ button.page-dots__dot {
   border-radius: var(--radius-lg);
   background: var(--surface);
   color: var(--text-primary);
-  box-shadow: 0 24px 48px rgba(33, 35, 43, 0.24);
+  box-shadow: var(--shadow-modal);
 
   /* Grid so the body scrolls between a pinned head and foot, rather than
      the card growing past the viewport. */
@@ -1391,6 +1412,17 @@ button.page-dots__dot {
 .modal--md { width: min(100% - 2 * var(--space-5), 560px); }
 .modal--lg { width: min(100% - 2 * var(--space-5), 880px); }
 
+/*
+ * The help dialogue, a little wider than a form of the same size.
+ *
+ * Every other modal is a stack of fields, where a narrow column keeps a
+ * label next to its input. This one is prose, and prose read at a form's
+ * width breaks eight-word sentences over three lines. Not `--lg`: at 880px
+ * the measure goes the other way and the eye loses the start of the next
+ * line.
+ */
+.modal--help { width: min(100% - 2 * var(--space-5), 680px); }
+
 .modal__head {
   display: flex;
   align-items: flex-start;
@@ -1400,10 +1432,15 @@ button.page-dots__dot {
   border-bottom: 1px solid var(--table-rule);
 }
 
+/* Green, like `.page-head__title`. Every heading that names what you are
+   looking at is the brand colour in this app; the dialogue title was the one
+   that was not, which is why Create New SKU read as a different family of
+   screen from the page behind it. */
 .modal__title {
   margin: 0;
   font-size: var(--text-h3);
-  color: var(--text-primary);
+  font-weight: var(--weight-bold);
+  color: var(--accent);
 }
 
 .modal__subtitle {
@@ -1427,7 +1464,21 @@ button.page-dots__dot {
 
 .modal__close:hover { background: var(--surface-sunken); color: var(--text-primary); }
 
+/*
+ * A column with a gap, not a plain box.
+ *
+ * It was `padding` and nothing else, so whatever a dialog put inside it
+ * stacked flush: the Add User wizard's fields touched, and each field's
+ * notched label sat on the border of the one above. Every caller was
+ * expected to space its own children, which is how three dialogs ended up
+ * with three different bottom margins for the same job.
+ *
+ * The gap lives here now. A child that needs to sit tighter says so itself.
+ */
 .modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
   padding: var(--space-5);
   overflow-y: auto;
 }
@@ -1528,3 +1579,72 @@ button.page-dots__dot {
   flex-direction: column;
   gap: var(--space-4);
 }
+
+/* ---------------------------------------------------------------------------
+ * Split button — a primary action with its rarer siblings behind a caret
+ *
+ * Four buttons across a page head is too many, but folding them all into one
+ * menu buries the action people came for. The common one stays a single
+ * click; the occasional ones sit one click deeper.
+ * ------------------------------------------------------------------------ */
+
+.split {
+  position: relative;
+  display: inline-flex;
+}
+
+/* The two halves read as one control: the seam is a divider, not a gap, so
+   the pair keeps the silhouette of a single button. */
+.split__main {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.split__caret {
+  padding-inline: var(--space-2);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 1px solid color-mix(in srgb, var(--text-on-accent) 30%, transparent);
+}
+
+.split__caret.btn--secondary { border-left-color: var(--border); }
+
+.split__menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 40;
+  min-width: 230px;
+  margin: 0;
+  padding: var(--space-2);
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.split__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--text-caption);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.split__item:hover:not(:disabled) { background: var(--surface-sunken); }
+
+.split__item:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.split__hint { color: var(--text-muted); }

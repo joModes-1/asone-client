@@ -68,9 +68,29 @@ export function orderVolume(params?: Scoped & { from?: string; to?: string }) {
   return get<OrderVolume>('/dashboard/order-volume/', params ?? undefined)
 }
 
-/** The bell: an unread count and the messages behind it. */
+/**
+ * The bell for a warehouse role: a count and the messages behind it.
+ *
+ * School Staff are refused this one — a school holds no stock, so most of
+ * what it reports is about somebody else's building. They have
+ * {@link schoolNotifications} instead.
+ */
 export function notifications(params?: Scoped) {
   return get<NotificationFeed>('/dashboard/notifications/', params ?? undefined)
+}
+
+/**
+ * The bell for a school. Same shape, so one component draws both.
+ *
+ * No `warehouse` parameter and no `school` one: it is scoped to the caller's
+ * own school, exactly as their dashboard is. The rows are things a school can
+ * *act on* — a parcel to confirm, an invoice to pay, a backorder to expect —
+ * and confirming a delivery is theirs alone, which is why hiding the bell
+ * from them left the only role with a personal to-do list with nowhere to
+ * read it.
+ */
+export function schoolNotifications() {
+  return get<NotificationFeed>('/dashboard/school/notifications/')
 }
 
 /** Units and value per warehouse, with totals. */

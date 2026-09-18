@@ -16,7 +16,7 @@
  */
 
 import { useState } from 'react'
-import { Badge, Button, Modal } from '@/components'
+import { Alert, Badge, Button, Modal } from '@/components'
 import { toApiError, type ApiError } from '@/api/errors'
 import { AddUserModal } from './AddUserModal'
 import { useDeclineRegistration } from '../hooks/useRegistrationRequests'
@@ -54,7 +54,20 @@ export function RegistrationReviewModal({ request, roles, onClose }: Registratio
         roles={roles}
         prefill={request}
         onClose={onClose}
-        onCreate={(input) => registrationsApi.approve(request.id, input)}
+        /*
+          Approving takes only the decision a lead makes here — the role and
+          its site. Name, email and phone came from the registrant and are
+          already on the request, so the endpoint does not take them again;
+          passing the whole form through was a type error waiting to be
+          noticed.
+        */
+        onCreate={(input) =>
+          registrationsApi.approve(request.id, {
+            role: input.role,
+            warehouse: input.warehouse ?? undefined,
+            school: input.school ?? undefined,
+          })
+        }
       />
     )
   }
@@ -66,83 +79,113 @@ export function RegistrationReviewModal({ request, roles, onClose }: Registratio
         ? 'Decline this request?'
         : 'Review registration request'
 
-  return (
-    <Modal open title={title} onClose={onClose} size="sm">
-      {view === 'review' && (
-        <>
-          {error && <p className="modal__error">{error.message}</p>}
+  /*
+    Actions go in `Modal`'s footer slot, not in the body. The footer is
+    pinned below a body that scrolls, so a long request stays confirmable
+    without hunting for the buttons — and it is the one place every other
+    dialog in the app puts them.
+  */
+  const footer =
+    view === 'review' ? (
+      <>
+        <Button
+          variant="secondary"
+          onClick={() => setView('decline')}
+          disabled={declineMutation.isPending}
+        >
+          Decline
+        </Button>
+        <Button onClick={() => setView('assign-role')}>Approve &amp; Create Account</Button>
+      </>
+    ) : view === 'decline' ? (
+      <>
+        <Button
+          variant="secondary"
+          onClick={() => setView('review')}
+          disabled={declineMutation.isPending}
+        >
+          Back
+        </Button>
+        <Button
+          variant="danger"
+          onClick={() => void handleDecline()}
+          disabled={declineMutation.isPending}
+        >
+          {declineMutation.isPending ? 'Declining…' : 'Confirm Decline'}
+        </Button>
+      </>
+    ) : (
+      <Button onClick={onClose}>Done</Button>
+    )
 
-          <div className="modal__review">
-            <div className="modal__review-row">
-              <span className="modal__review-label">Full Name</span>
-              <span className="modal__review-value modal__review-value--accent">
-                {request.first_name} {request.last_name}
-              </span>
-            </div>
-            <div className="modal__review-row">
-              <span className="modal__review-label">Email Address</span>
-              <span className="modal__review-value">{request.email}</span>
-            </div>
-            <div className="modal__review-row">
-              <span className="modal__review-label">Phone Number</span>
-              <span className="modal__review-value">{request.phone_number || '—'}</span>
-            </div>
-            <div className="modal__review-row">
-              <span className="modal__review-label">Email Verified</span>
+  return (
+    <Modal open title={title} onClose={onClose} size="md" footer={footer}>
+      {error && (
+        <Alert tone="error">
+          <strong>That did not go through.</strong> {error.message}
+        </Alert>
+      )}
+
+      {view === 'review' && (
+        <dl className="wizard__review">
+          <div>
+            <dt>Full name</dt>
+            <dd className="wizard__review-value--accent">
+              {request.first_name} {request.last_name}
+            </dd>
+          </div>
+          <div>
+            <dt>Email address</dt>
+            <dd>{request.email}</dd>
+          </div>
+          <div>
+            <dt>Phone number</dt>
+            <dd>{request.phone_number || '—'}</dd>
+          </div>
+          <div>
+            <dt>Email verified</dt>
+            <dd>
               <Badge tone={request.is_email_verified ? 'success' : 'warning'}>
                 {request.is_email_verified ? 'Verified' : 'Not yet verified'}
               </Badge>
-            </div>
+            </dd>
           </div>
-
-          <div className="modal__actions">
-            <Button variant="secondary" onClick={() => setView('decline')} disabled={declineMutation.isPending}>
-              Decline
-            </Button>
-            <Button onClick={() => setView('assign-role')}>Approve & Create Account</Button>
-          </div>
-        </>
+        </dl>
       )}
 
       {view === 'decline' && (
         <>
-          {error && <p className="modal__error">{error.message}</p>}
+          <Alert tone="warning">
+            No account is created and <strong>nothing is emailed</strong> to{' '}
+            {request.first_name}. They will simply see no reply, and may submit
+            the form again.
+          </Alert>
 
-          <p className="modal__body-note">
-            No account is created and nothing is emailed to {request.first_name}. They will simply
-            see no reply and may submit the form again.
-          </p>
-
-          <label className="stack-field">
-            <span className="stack-field__label">Notes (optional, for your own record)</span>
+          {/* `TextField` is input-only, so a textarea uses the same
+              `field field--stacked` markup every other form in the app uses
+              for one. */}
+          <div className="field field--stacked">
+            <label htmlFor="decline-notes">Notes</label>
             <textarea
-              className="stack-field__input"
+              id="decline-notes"
+              className="input input--area"
               rows={3}
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
             />
-          </label>
-
-          <div className="modal__actions">
-            <Button variant="secondary" onClick={() => setView('review')} disabled={declineMutation.isPending}>
-              Back
-            </Button>
-            <Button variant="danger" onClick={() => void handleDecline()} disabled={declineMutation.isPending}>
-              {declineMutation.isPending ? 'Declining…' : 'Confirm Decline'}
-            </Button>
+            <p className="field__hint">
+              Optional, and only for your own record — the registrant never
+              sees it.
+            </p>
           </div>
         </>
       )}
 
       {view === 'declined' && (
-        <>
-          <p className="modal__body-note">
-            The request from {request.first_name} {request.last_name} has been declined.
-          </p>
-          <div className="modal__actions">
-            <Button onClick={onClose}>Done</Button>
-          </div>
-        </>
+        <p className="field__hint">
+          The request from {request.first_name} {request.last_name} has been
+          declined.
+        </p>
       )}
     </Modal>
   )

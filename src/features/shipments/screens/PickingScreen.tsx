@@ -44,8 +44,20 @@ import { AppShell } from '@/features/shell/components/AppShell'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useWarehouseFilter } from '@/features/shell/hooks/useWarehouseFilter'
 import { KpiCard } from '@/features/dashboard/components/KpiCard'
+import type { PickingStatus } from '@/api/shipments'
 import { DespatchQueue } from '../components/DespatchQueue'
 import { PICKING_PAGE_SIZE, usePickOrder, usePickingQueue } from '../hooks/useShipments'
+
+/**
+ * The backlog holds exactly two statuses, so the filter offers exactly two
+ * and neither is invented. "In progress" is not among them for the reason at
+ * the top of this file: `pick_order` is atomic.
+ */
+const STATUS_FILTERS: { value: '' | PickingStatus; label: string }[] = [
+  { value: '', label: 'All' },
+  { value: 'RELEASED', label: 'Not picked' },
+  { value: 'PICKED', label: 'Picked' },
+]
 
 /** Urgency is the warehouse's own hint; nothing in the system acts on it. */
 function priorityTone(priority: string | undefined): Tone {
@@ -74,8 +86,9 @@ export function PickingScreen() {
   const navigate = useNavigate()
   const [picking, setPicking] = useState<number | null>(null)
   const [page, setPage] = useState(1)
+  const [status, setStatus] = useState<'' | PickingStatus>('')
 
-  const queue = usePickingQueue(warehouseId, page)
+  const queue = usePickingQueue(warehouseId, page, status || null)
   const pick = usePickOrder()
   const mayPick = canReceiveAndShip(user)
 
@@ -84,7 +97,7 @@ export function PickingScreen() {
   const total = queue.data?.orders.count ?? 0
 
   return (
-    <AppShell title="Shipping">
+    <AppShell title="Shipping" searchHint="order or school">
       <header className="page-head">
         <h1 className="page-head__title">Shipping</h1>
         <p className="page-head__subtitle">
@@ -130,14 +143,53 @@ export function PickingScreen() {
       <section className="table-card">
         <header className="table-card__head">
           <h2 className="table-card__title">Order Picking Backlog</h2>
+
+          {/*
+            Same `.filter-bar` markup as transfers, shipments and production
+            orders, so this reads as the one control the rest of the system
+            uses rather than a second way of doing the same thing.
+
+            Narrowing returns to page one. Staying on page four of a list
+            that now has one page shows an empty table and looks like the
+            filter matched nothing.
+          */}
+          <div className="filter-bar filter-bar--inline">
+            <label className="filter-bar__field">
+              <span>Status:</span>
+              <select
+                aria-label="Filter the backlog by status"
+                value={status}
+                onChange={(event) => {
+                  setStatus(event.target.value as '' | PickingStatus)
+                  setPage(1)
+                }}
+              >
+                {STATUS_FILTERS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </header>
 
         {queue.isLoading ? (
           <SkeletonRows rows={6} />
         ) : orders.length === 0 ? (
           <EmptyState
-            title="Nothing waiting to be picked"
-            body="An order appears here once Finance confirms payment and releases it to the warehouse."
+            title={
+              status === 'PICKED'
+                ? 'Nothing picked yet'
+                : status === 'RELEASED'
+                  ? 'Nothing left to pick'
+                  : 'Nothing waiting to be picked'
+            }
+            body={
+              status
+                ? 'The filter above is narrowing this table. Set it back to All to see the whole backlog.'
+                : 'An order appears here once Finance confirms payment and releases it to the warehouse.'
+            }
             icon={PackageCheck}
           />
         ) : (
@@ -153,7 +205,10 @@ export function PickingScreen() {
                   <th>Priority</th>
                   <th>Created</th>
                   <th>Status</th>
-                  <th aria-label="Action" />
+                  {/* Not drawn at all for a role that cannot pick — a
+                      column of dead buttons is worse than no column. A lead
+                      reads this backlog; the warehouse works it. */}
+                  {mayPick && <th>Action</th>}
                 </tr>
               </thead>
               <tbody>
@@ -182,6 +237,7 @@ export function PickingScreen() {
                           {ready ? 'Ready' : 'Completed'}
                         </Badge>
                       </td>
+                      {mayPick && (
                       <td className="ledger__num">
                         {ready ? (
                           /*
@@ -196,7 +252,6 @@ export function PickingScreen() {
                             confirmLabel="Yes, pick it"
                             pendingLabel="Picking…"
                             pending={picking === order.id}
-                            disabled={!mayPick}
                             note={`Reserves ${order.item_count} garments for ${order.student_name}. They stop being available to any other order.`}
                             onConfirm={() => {
                               setPicking(order.id)
@@ -221,6 +276,7 @@ export function PickingScreen() {
                           </Button>
                         )}
                       </td>
+                      )}
                     </tr>
                   )
                 })}

@@ -1446,6 +1446,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard/school/notifications/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Notifications — the bell, for a school
+         * @description The school-side twin of `notifications/`, and the same contract: **derived, not stored**, so reading them does not clear the count. It falls when the parcel is confirmed or the invoice is paid.
+         *
+         *     A separate endpoint rather than a wider audience on the warehouse one, for the same reason the two dashboards are separate screens: a school holds no stock, so 'SKUs below minimum' is somebody else's building.
+         *
+         *     The rows are the school's own, and every one of them is something it can act on — a parcel to confirm, an invoice to pay, a backorder to expect. **Confirming a delivery is the school's alone**, which is why hiding the bell from them left the only role with a personal to-do list with nowhere to read it.
+         */
+        get: operations["dashboard_school_notifications_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard/summary/": {
         parameters: {
             query?: never;
@@ -2268,7 +2292,7 @@ export interface paths {
          * The picking backlog
          * @description The backlog, most urgent first, paginated.
          *
-         *     `summary` counts the **whole** queue, not the page: a warehouse asking how much is waiting means all of it, and a tile that changed as you paged would be worse than no tile.
+         *     `summary` counts the **whole** queue, not the page: a warehouse asking how much is waiting means all of it, and a tile that changed as you paged would be worse than no tile. It is also unaffected by `status`, for the same reason — the tiles are the totals the filter is chosen from.
          */
         get: operations["orders_picking_queue_retrieve"];
         put?: never;
@@ -3309,7 +3333,6 @@ export interface components {
             level: string;
             count: number;
             message: string;
-            /** @description The one record this alert is about, for kinds that are one row per record rather than a rollup — currently only registrations_pending, where it is the RegistrationRequest id. Absent for every other kind: those are a count over many records, with no single one to link to. */
             ref_id?: number | null;
         };
         /** @description What a school is still owed — F44. */
@@ -3504,6 +3527,8 @@ export interface components {
             readonly id: number;
             /** @description For example "White Shirt". */
             name: string;
+            /** @description Short code used in SKU numbers, for example BTU. Filled in from the name if left blank, and never changed afterwards. */
+            readonly code: string;
             /**
              * @description Which price list this garment appears on.
              *
@@ -3514,6 +3539,8 @@ export interface components {
             school_level?: components["schemas"]["GarmentSchoolLevelEnum"];
             readonly school_level_display: string;
             colour?: string;
+            /** @description The swatch for this colour, as "#RRGGBB". Optional. */
+            colour_hex?: string;
             /** @description Inactive garments stay in reports but cannot be ordered. */
             is_active?: boolean;
             /**
@@ -3748,6 +3775,8 @@ export interface components {
             kit_number: string;
             /** @description For example "PS Starter Kit". */
             name: string;
+            /** @description Who this kit is for, in a sentence. Shown to schools choosing one. */
+            description?: string;
             school_level: components["schemas"]["SchoolLevelEnum"];
             readonly school_level_display: string;
             /** @description Inactive kits stay in reports but cannot be ordered. */
@@ -3799,6 +3828,19 @@ export interface components {
          *
          *     Inactive accounts are rejected by Django's own authentication backend, so
          *     deactivating a user is enough to lock them out at the next login.
+         *
+         *     ## The refusal wording
+         *
+         *     simplejwt's default is "No active account found with the given
+         *     credentials", which is wrong here in two ways. It is not true — the view
+         *     has already established through `user_with_access` that the account
+         *     exists and is active, so by the time this serializer runs the *only*
+         *     thing that can be wrong is the password. And it reads as a system fault
+         *     rather than a typo, so people retype the same password expecting a
+         *     different answer.
+         *
+         *     Saying "that password is not right" gives nothing away that the step
+         *     before has not already given away.
          */
         Login: {
             email: string;
@@ -4477,15 +4519,35 @@ export interface components {
          *     The current password is required even though the request is already
          *     authenticated. A stolen access token is then not enough to lock the real
          *     owner out of their own account.
+         *
+         *     **Except on the first-time gate.** An account with `must_change_password`
+         *     set may omit it, because there the field defends nothing and costs a
+         *     retype at the moment a new user is least sure of themselves:
+         *
+         *       * They typed that exact password on the sign-in screen seconds ago.
+         *         There is no other way to have reached this request.
+         *       * While the flag is set the server refuses every other endpoint, so a
+         *         session in the wrong hands can do precisely one thing — set a
+         *         password. The only attack the field stops is somebody reaching an
+         *         unlocked screen inside that window.
+         *       * It stops nothing at all with respect to the lead who created the
+         *         account: they chose the one-time password and could sign in as that
+         *         person directly.
+         *
+         *     Sending it anyway is still honoured and still checked, so a client that
+         *     has the password loses nothing by passing it.
          */
         PasswordChange: {
-            current_password: string;
+            /** @description Required unless the account is on the first-time password gate (`must_change_password`), where it may be omitted. */
+            current_password?: string;
             new_password: string;
         };
         PatchedGarment: {
             readonly id?: number;
             /** @description For example "White Shirt". */
             name?: string;
+            /** @description Short code used in SKU numbers, for example BTU. Filled in from the name if left blank, and never changed afterwards. */
+            readonly code?: string;
             /**
              * @description Which price list this garment appears on.
              *
@@ -4496,6 +4558,8 @@ export interface components {
             school_level?: components["schemas"]["GarmentSchoolLevelEnum"];
             readonly school_level_display?: string;
             colour?: string;
+            /** @description The swatch for this colour, as "#RRGGBB". Optional. */
+            colour_hex?: string;
             /** @description Inactive garments stay in reports but cannot be ordered. */
             is_active?: boolean;
             /**
@@ -4573,6 +4637,8 @@ export interface components {
             kit_number?: string;
             /** @description For example "PS Starter Kit". */
             name?: string;
+            /** @description Who this kit is for, in a sentence. Shown to schools choosing one. */
+            description?: string;
             school_level?: components["schemas"]["SchoolLevelEnum"];
             readonly school_level_display?: string;
             /** @description Inactive kits stay in reports but cannot be ordered. */
@@ -4713,6 +4779,8 @@ export interface components {
             level?: components["schemas"]["SchoolLevelEnum"];
             readonly level_display?: string;
             address?: string;
+            /** @description Students enrolled. Left blank until the school reports it. */
+            student_count?: number | null;
             primary_warehouse?: number;
             readonly primary_warehouse_name?: string;
             /** @description A closed site stays in reports but takes no new work. */
@@ -4771,10 +4839,11 @@ export interface components {
         };
         PatchedSku: {
             readonly id?: number;
-            /** @description System assigned. Unique forever, never reused. */
+            /** @description System assigned from the garment and size, for example GTR-14. */
             readonly number?: string;
             garment?: number;
             readonly garment_name?: string;
+            readonly garment_school_level?: string;
             size?: number;
             readonly size_name?: string;
             /** @description Filled in from the garment and size if left blank. */
@@ -5279,6 +5348,8 @@ export interface components {
             level: components["schemas"]["SchoolLevelEnum"];
             readonly level_display: string;
             address?: string;
+            /** @description Students enrolled. Left blank until the school reports it. */
+            student_count?: number | null;
             primary_warehouse: number;
             readonly primary_warehouse_name: string;
             /** @description A closed site stays in reports but takes no new work. */
@@ -5533,10 +5604,11 @@ export interface components {
         };
         Sku: {
             readonly id: number;
-            /** @description System assigned. Unique forever, never reused. */
+            /** @description System assigned from the garment and size, for example GTR-14. */
             readonly number: string;
             garment: number;
             readonly garment_name: string;
+            readonly garment_school_level: string;
             size: number;
             readonly size_name: string;
             /** @description Filled in from the garment and size if left blank. */
@@ -8310,6 +8382,25 @@ export interface operations {
             };
         };
     };
+    dashboard_school_notifications_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notifications"];
+                };
+            };
+        };
+    };
     dashboard_summary_retrieve: {
         parameters: {
             query?: {
@@ -8582,6 +8673,8 @@ export interface operations {
     inventory_movements_list: {
         parameters: {
             query?: {
+                date_from?: string;
+                date_to?: string;
                 document_number?: string;
                 /**
                  * @description * `RECEIPT` - Receipt from a Tailoring Center
@@ -9220,6 +9313,8 @@ export interface operations {
                 page?: number;
                 /** @description Capped at 200. */
                 page_size?: number;
+                /** @description Narrow the rows to one bucket: RELEASED is still to pick, PICKED is off the shelf and waiting for a van. Omit for both. `summary` is unaffected. */
+                status?: "PICKED" | "RELEASED";
                 /** @description Required for an all-locations role; ignored for a clerk. */
                 warehouse?: number;
             };
