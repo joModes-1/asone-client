@@ -67,7 +67,7 @@ export function SkuDetailPanel({ row, onClose, onEdit }: SkuDetailPanelProps) {
   // domain/money.ts). Rebuilt as a 2dp string so the existing, tested
   // `formatCompactUGX` still does the actual formatting.
   const unitRateText =
-    row.available > 0
+    row.available !== null && row.available > 0
       ? `${formatCompactUGX((Number(row.value) / row.available).toFixed(2))}/unit`
       : null
 

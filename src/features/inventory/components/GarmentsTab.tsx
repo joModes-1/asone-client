@@ -27,6 +27,7 @@ import { can } from '@/domain/access'
 import { formatUGX } from '@/domain/money'
 import { swatchFor } from '@/domain/garmentColours'
 import { schoolLevelLabel } from '@/domain/sizes'
+import { fitGroupLabel } from '@/domain/fitGroups'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import type { Garment } from '@/api/types'
 import { useGarmentOptions } from '../hooks/useGarmentOptions'
@@ -89,7 +90,7 @@ export function GarmentsTab() {
               <tr>
                 <th>Code</th>
                 <th>Garment</th>
-                <th>Level</th>
+                <th>Class band</th>
                 <th>Colour</th>
                 <th className="ledger__num">SKUs</th>
                 <th className="ledger__num">Price today</th>
@@ -104,9 +105,19 @@ export function GarmentsTab() {
                   <td className="ledger__strong ledger__wrap" title={garment.name}>
                     {garment.name}
                   </td>
-                  <td>
+                  {/*
+                    The class band, not the price list. The two were the same
+                    column while there were only two bands; there are five
+                    now, and showing "Primary" for a garment cut for Nursery,
+                    P1–P4 or P5–P7 alike hid the distinction the catalogue
+                    depends on. The price list it implies is on the badge's
+                    tooltip, since it is derived and never contradicts.
+                  */}
+                  <td title={schoolLevelLabel(garment.school_level)}>
                     <Badge tone={garment.school_level === 'HS' ? 'purple' : 'teal'}>
-                      {schoolLevelLabel(garment.school_level)}
+                      {garment.fit_group
+                        ? fitGroupLabel(garment.fit_group)
+                        : schoolLevelLabel(garment.school_level)}
                     </Badge>
                   </td>
                   <td>

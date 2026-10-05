@@ -17,6 +17,8 @@ export interface paths {
          * Sign in — step 1 of 2, password
          * @description Check an email address and password, then **email a one-time code**. No tokens are returned here — post the code to `/api/auth/login/verify/` to finish.
          *
+         *     **An unconfirmed address is not refused here.** On a first sign-in the emailed code confirms the address as well as being the second factor, and the response carries `confirming_email: true` so the screen can say so. There is no separate step to do first.
+         *
          *     **403 means the address is not a user of this system**, or has been deactivated. Only people Central Office has added can sign in, and this says so plainly rather than leaving somebody retyping a password that was never going to work.
          *
          *     **401 means the password is wrong** for an address that does exist.
@@ -480,9 +482,9 @@ export interface paths {
         put?: never;
         /**
          * Send the confirmation code again
-         * @description Emails a **new** confirmation code and retires the old one.
+         * @description Emails a standalone confirmation code and retires any earlier one.
          *
-         *     Needed more often than it sounds: a code lasts seven days, mail goes astray, and people start a new job a fortnight after being added. Without this the only fix is a developer.
+         *     **Rarely needed.** An address is normally confirmed by the code the person's first sign-in emails them, with no help from a lead. This is for when that cannot work — the sign-in code is not arriving, or somebody is checking the mailbox on their behalf. It lasts seven days rather than ten minutes, so it survives being passed along.
          *
          *     Refused for somebody whose address is already confirmed — there is nothing left to prove. If they cannot get in, use **set password** instead.
          */
@@ -567,12 +569,14 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Confirm your email address
-         * @description A new member of staff confirms the address their account was created against, using the code emailed to it.
+         * Confirm an email address without signing in
+         * @description Confirms an account's email address using a standalone code, without signing in.
          *
-         *     **Until this is done, signing in is refused.** An account is created with a password the lead knows and an address nobody has proven; this is what proves it. A mistyped address must not become a working account.
+         *     **Not part of the normal flow, and not a gate in front of it.** Signing in is *not* refused while an address is unconfirmed: the code emailed by `POST /api/auth/login/` confirms it on the way through, which is how almost everybody's address gets confirmed. Nothing sends a code to this endpoint unless a lead calls `POST /api/auth/users/{id}/resend-verification/` first.
          *
-         *     The password is not part of this step and is never emailed — it reaches the person through their lead, by a different route. That separation is the whole point of the code.
+         *     Kept for the case that flow cannot serve — a sign-in code that will not reach the person, or a mailbox being checked on their behalf. This code lasts days rather than minutes so it survives being passed along.
+         *
+         *     The password is not part of this step and is never emailed — it reaches the person through their lead, by a different route.
          *
          *     Wrong codes count against a limit, and the code expires.
          */
@@ -690,6 +694,36 @@ export interface paths {
          *     This is the only sanctioned way to change a price. Editing a price row in place would rewrite history, and an invoice reprinted next term would no longer match the original.
          */
         post: operations["catalog_garments_reprice_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/catalog/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import a catalogue spreadsheet
+         * @description Upload a spreadsheet of garments and create the garments, sizes, SKUs and prices in it.
+         *
+         *     **One row per garment, not per SKU.** `sizes` is semicolon-separated, and the row's price applies to every one of them — AsOne price garments, not sizes.
+         *
+         *     Required columns: `name`, `school_level`, `sizes`, `unit_price`. Optional: `code`, `colour`, `colour_code`, `fit_group`, `active_date`. The three that compose AsOne's five-part SKU number (`UNI-NUR-CHS-XS-CHK`) are `fit_group`, `code` and `colour_code`; without them SKUs fall back to the two-part form.
+         *
+         *     **Nothing is half-imported.** The whole file is one transaction, so a bad row on line 40 rolls back lines 1-39 too. Every unreadable row is reported with its line number, not just the first.
+         *
+         *     **Running it twice changes nothing** — garments are matched on name, school level and fit group.
+         *
+         *     Send `dry_run=true` first: it reports what would happen and writes nothing.
+         */
+        post: operations["catalog_import_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1055,7 +1089,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Garment sizes, shared across garments so "10" means one thing.
+         * @description Garment sizes, shared across garments so "M" means one thing.
          *
          *     Leads only, per F05. Other roles reach a size through the SKU that uses
          *     it — `size_name` is on every SKU — so nothing is hidden from them in
@@ -1064,7 +1098,7 @@ export interface paths {
         get: operations["catalog_sizes_list"];
         put?: never;
         /**
-         * @description Garment sizes, shared across garments so "10" means one thing.
+         * @description Garment sizes, shared across garments so "M" means one thing.
          *
          *     Leads only, per F05. Other roles reach a size through the SKU that uses
          *     it — `size_name` is on every SKU — so nothing is hidden from them in
@@ -1085,7 +1119,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Garment sizes, shared across garments so "10" means one thing.
+         * @description Garment sizes, shared across garments so "M" means one thing.
          *
          *     Leads only, per F05. Other roles reach a size through the SKU that uses
          *     it — `size_name` is on every SKU — so nothing is hidden from them in
@@ -1093,7 +1127,7 @@ export interface paths {
          */
         get: operations["catalog_sizes_retrieve"];
         /**
-         * @description Garment sizes, shared across garments so "10" means one thing.
+         * @description Garment sizes, shared across garments so "M" means one thing.
          *
          *     Leads only, per F05. Other roles reach a size through the SKU that uses
          *     it — `size_name` is on every SKU — so nothing is hidden from them in
@@ -1102,7 +1136,7 @@ export interface paths {
         put: operations["catalog_sizes_update"];
         post?: never;
         /**
-         * @description Garment sizes, shared across garments so "10" means one thing.
+         * @description Garment sizes, shared across garments so "M" means one thing.
          *
          *     Leads only, per F05. Other roles reach a size through the SKU that uses
          *     it — `size_name` is on every SKU — so nothing is hidden from them in
@@ -1112,7 +1146,7 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * @description Garment sizes, shared across garments so "10" means one thing.
+         * @description Garment sizes, shared across garments so "M" means one thing.
          *
          *     Leads only, per F05. Other roles reach a size through the SKU that uses
          *     it — `size_name` is on every SKU — so nothing is hidden from them in
@@ -3456,6 +3490,8 @@ export interface components {
          * @enum {string}
          */
         BackorderStatusEnum: "OPEN" | "ASSIGNED" | "FILLED" | "CANCELLED";
+        /** @enum {unknown} */
+        BlankEnum: "";
         /** @description Withdrawing an unpaid invoice — F36. */
         CancelOrder: {
             /**
@@ -3463,6 +3499,38 @@ export interface components {
              * @default
              */
             reason: string;
+        };
+        /** @description The upload behind `POST /api/catalog/import/`. */
+        CatalogueImport: {
+            /**
+             * Format: uri
+             * @description The catalogue as .xlsx, .xlsm or .csv.
+             */
+            file: string;
+            /** @description Which worksheet to read. Defaults to the first one. */
+            sheet?: string;
+            /**
+             * @description Check the file and report what would be imported, then roll it back. Nothing is written.
+             * @default false
+             */
+            dry_run: boolean;
+        };
+        /**
+         * @description What an import did, or would have done.
+         *
+         *     `unchanged` is the count of garments already present — worth showing,
+         *     because a re-import that reports nothing created and everything
+         *     unchanged is the system saying "this file is already loaded", which
+         *     looks like a failure until it is named.
+         */
+        CatalogueImportResult: {
+            garments: number;
+            sizes: number;
+            skus: number;
+            prices: number;
+            unchanged: number;
+            dry_run: boolean;
+            detail: string;
         };
         /** @description The school confirming a parcel arrived — F41's other half. */
         ConfirmReceipt: {
@@ -3612,12 +3680,22 @@ export interface components {
             /** @default  */
             notes: string;
         };
+        /**
+         * @description * `NUR` - Nursery
+         *     * `P14` - Lower Primary (P1–P4)
+         *     * `P57` - Upper Primary (P5–P7)
+         *     * `S14` - O Level (S1–S4)
+         *     * `S56` - A Level (S5–S6)
+         *     * `ALL` - All levels
+         * @enum {string}
+         */
+        FitGroupEnum: "NUR" | "P14" | "P57" | "S14" | "S56" | "ALL";
         Garment: {
             readonly id: number;
             /** @description For example "White Shirt". */
             name: string;
             /** @description Short code used in SKU numbers, for example BTU. Filled in from the name if left blank, and never changed afterwards. */
-            readonly code: string;
+            code?: string;
             /**
              * @description Which price list this garment appears on.
              *
@@ -3627,7 +3705,21 @@ export interface components {
              */
             school_level?: components["schemas"]["GarmentSchoolLevelEnum"];
             readonly school_level_display: string;
+            /**
+             * @description The class band this garment is cut for, e.g. P1–P4. Sets the price list, and forms the second part of every SKU number beneath it.
+             *
+             *     * `NUR` - Nursery
+             *     * `P14` - Lower Primary (P1–P4)
+             *     * `P57` - Upper Primary (P5–P7)
+             *     * `S14` - O Level (S1–S4)
+             *     * `S56` - A Level (S5–S6)
+             *     * `ALL` - All levels
+             */
+            fit_group?: components["schemas"]["FitGroupEnum"] | components["schemas"]["BlankEnum"];
+            readonly fit_group_display: string;
             colour?: string;
+            /** @description Short code used in SKU numbers, for example CHK for Checked. */
+            colour_code?: string;
             /** @description The swatch for this colour, as "#RRGGBB". Optional. */
             colour_hex?: string;
             /** @description Inactive garments stay in reports but cannot be ordered. */
@@ -3866,7 +3958,7 @@ export interface components {
             name: string;
             /** @description Who this kit is for, in a sentence. Shown to schools choosing one. */
             description?: string;
-            school_level: components["schemas"]["SchoolLevelEnum"];
+            school_level?: components["schemas"]["SchoolLevelEnum"] | components["schemas"]["BlankEnum"];
             readonly school_level_display: string;
             /** @description Inactive kits stay in reports but cannot be ordered. */
             is_active?: boolean;
@@ -3974,6 +4066,8 @@ export interface components {
             detail: string;
             /** @description Where the code went, partly masked — "j••••s@asone.test". */
             email_hint: string;
+            /** @description True on a first sign-in, where entering the code also confirms the address. Label the screen accordingly: somebody who has just been handed a password by their lead is not expecting a security step and needs telling what the code is for. The request itself is identical either way. */
+            confirming_email: boolean;
         };
         /** @description POST /api/auth/logout/ — the refresh token to blacklist. */
         Logout: {
@@ -4666,7 +4760,7 @@ export interface components {
             /** @description For example "White Shirt". */
             name?: string;
             /** @description Short code used in SKU numbers, for example BTU. Filled in from the name if left blank, and never changed afterwards. */
-            readonly code?: string;
+            code?: string;
             /**
              * @description Which price list this garment appears on.
              *
@@ -4676,7 +4770,21 @@ export interface components {
              */
             school_level?: components["schemas"]["GarmentSchoolLevelEnum"];
             readonly school_level_display?: string;
+            /**
+             * @description The class band this garment is cut for, e.g. P1–P4. Sets the price list, and forms the second part of every SKU number beneath it.
+             *
+             *     * `NUR` - Nursery
+             *     * `P14` - Lower Primary (P1–P4)
+             *     * `P57` - Upper Primary (P5–P7)
+             *     * `S14` - O Level (S1–S4)
+             *     * `S56` - A Level (S5–S6)
+             *     * `ALL` - All levels
+             */
+            fit_group?: components["schemas"]["FitGroupEnum"] | components["schemas"]["BlankEnum"];
+            readonly fit_group_display?: string;
             colour?: string;
+            /** @description Short code used in SKU numbers, for example CHK for Checked. */
+            colour_code?: string;
             /** @description The swatch for this colour, as "#RRGGBB". Optional. */
             colour_hex?: string;
             /** @description Inactive garments stay in reports but cannot be ordered. */
@@ -4758,7 +4866,7 @@ export interface components {
             name?: string;
             /** @description Who this kit is for, in a sentence. Shown to schools choosing one. */
             description?: string;
-            school_level?: components["schemas"]["SchoolLevelEnum"];
+            school_level?: components["schemas"]["SchoolLevelEnum"] | components["schemas"]["BlankEnum"];
             readonly school_level_display?: string;
             /** @description Inactive kits stay in reports but cannot be ordered. */
             is_active?: boolean;
@@ -4998,7 +5106,7 @@ export interface components {
         };
         PatchedSku: {
             readonly id?: number;
-            /** @description System assigned from the garment and size, for example GTR-14. */
+            /** @description System assigned from the garment and size, for example UNI-NUR-CHS-XS-CHK. */
             readonly number?: string;
             garment?: number;
             readonly garment_name?: string;
@@ -5794,7 +5902,7 @@ export interface components {
         };
         Sku: {
             readonly id: number;
-            /** @description System assigned from the garment and size, for example GTR-14. */
+            /** @description System assigned from the garment and size, for example UNI-NUR-CHS-XS-CHK. */
             readonly number: string;
             garment: number;
             readonly garment_name: string;
@@ -7085,6 +7193,36 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GarmentPrice"];
                 };
+            };
+        };
+    };
+    catalog_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["CatalogueImport"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogueImportResult"];
+                };
+            };
+            /** @description The file, or some of its rows, could not be read. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -101,8 +101,22 @@ export interface InventoryRow {
   colour: string
   warehouseId: number
   warehouseName: string
-  available: number
-  pick: number
+  /**
+   * On hand and pickable — or `null` where this SKU has never moved at this
+   * warehouse.
+   *
+   * Null rather than 0, for the same reason as `value` below. A row is built
+   * for every SKU at every warehouse, so most pairs have no ledger entry at
+   * all, and 0 claimed we had looked and found none. A SKU that has never
+   * arrived and one that sold out read identically.
+   *
+   * Anything doing arithmetic on this says `?? 0` at the point of use, so
+   * the decision to treat "never stocked" as zero is made where it applies
+   * rather than hidden here.
+   */
+  available: number | null
+  /** Reserved for picking, or null — see `available`. */
+  pick: number | null
   shipped: number
   /** Null when no floor is configured for this SKU at this warehouse. */
   minimumQuantity: number | null
@@ -115,7 +129,21 @@ export interface InventoryRow {
    * to find out whether it is creating or changing.
    */
   minimumId: number | null
-  value: Money
+
+  /**
+   * The stock on hand, valued — or `null` where this SKU has never moved at
+   * this warehouse.
+   *
+   * Null rather than "0.00", which is what this used to be. A row is built
+   * for every SKU at every warehouse, so most pairs have no ledger entry at
+   * all, and a fabricated zero said "we valued this and it came to nothing"
+   * about stock that has never arrived. A newly created SKU and one that
+   * sold out looked identical.
+   *
+   * `formatCompactUGX` already renders null as an em dash, the same way
+   * `minimumQuantity` above has always been shown.
+   */
+  value: Money | null
   isActive: boolean
 }
 
@@ -276,16 +304,22 @@ export function useInventoryRows(filters: InventoryFilters): InventoryResult {
         colour: garment?.colour ?? '',
         warehouseId: warehouse.id,
         warehouseName: warehouse.name,
-        available: stock?.level ?? 0,
-        pick: stock?.reserved ?? 0,
+        available: stock?.level ?? null,
+        pick: stock?.reserved ?? null,
         shipped: shippedByKey.get(key) ?? 0,
         minimumQuantity: minimum?.minimum_quantity ?? null,
         minimumId: minimum?.id ?? null,
-        value: stock?.value ?? '0.00',
+        value: stock?.value ?? null,
         isActive: sku.is_active ?? true,
       }
 
-      if (lowStockOnly && (row.minimumQuantity === null || row.available > row.minimumQuantity)) {
+      // `available` is null where this SKU has never moved at this
+      // warehouse, and nothing on hand is below any floor — so it counts as
+      // zero here rather than being skipped.
+      if (
+        lowStockOnly &&
+        (row.minimumQuantity === null || (row.available ?? 0) > row.minimumQuantity)
+      ) {
         continue
       }
       if (!matchesQuery(row, needle)) continue

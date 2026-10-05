@@ -55,18 +55,33 @@ export function useUpdateGarment(id: number) {
   })
 }
 
+/**
+ * Everything that shows a price, and is therefore wrong the moment one
+ * changes.
+ *
+ * Exported because the create-a-garment flow prices the garment through the
+ * API module directly — it has no garment id until the creation returns, so
+ * it cannot use the `useReprice` hook — and without this it left the list
+ * showing "Not priced" for a garment that had just been priced. Worse, the
+ * creation's own refetch had already cached `current_price: null`, and
+ * `useGarmentOptions` holds it for ten minutes.
+ */
+export function invalidatePricedViews(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: ['garments'] })
+  void queryClient.invalidateQueries({ queryKey: ['catalog'] })
+  // Kits and orders are costed from this, so anything showing money is now
+  // out of date.
+  void queryClient.invalidateQueries({ queryKey: ['kits'] })
+  void queryClient.invalidateQueries({ queryKey: ['inventory'] })
+}
+
 export function useReprice(garmentId: number) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (input: catalogApi.RepriceInput) => catalogApi.reprice(garmentId, input),
     onSuccess: (price) => {
-      void queryClient.invalidateQueries({ queryKey: ['garments'] })
-      void queryClient.invalidateQueries({ queryKey: ['catalog'] })
-      // Kits and orders are costed from this, so anything showing money is
-      // now out of date.
-      void queryClient.invalidateQueries({ queryKey: ['kits'] })
-      void queryClient.invalidateQueries({ queryKey: ['inventory'] })
+      invalidatePricedViews(queryClient)
       snackbar.success(
         `Price set from ${price.active_date}`,
         'Invoices already raised keep the price that applied on their own date.',

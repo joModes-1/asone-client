@@ -18,15 +18,22 @@
  */
 
 import { useState, type FormEvent } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Palette } from 'lucide-react'
 import { Alert, Button, Modal, Select, TextField } from '@/components'
 import * as catalogApi from '@/api/catalog'
 import { toApiError } from '@/api/errors'
 import { todayISO } from '@/domain/dates'
-import type { Garment, GarmentSchoolLevel } from '@/api/types'
+import type { Garment } from '@/api/types'
 import { GARMENT_COLOURS, garmentSwatch, isKnownColour } from '@/domain/garmentColours'
 import { cleanSizeName } from '@/domain/sizes'
-import { useCreateGarment, useCreateSize, useUpdateGarment } from '../hooks/useCreateGarment'
+import { FIT_GROUPS, priceListNote, type FitGroup } from '@/domain/fitGroups'
+import {
+  invalidatePricedViews,
+  useCreateGarment,
+  useCreateSize,
+  useUpdateGarment,
+} from '../hooks/useCreateGarment'
 
 /**
  * A `var(--token)` resolved to the hex behind it.
@@ -48,11 +55,13 @@ interface CreateGarmentModalProps {
 
 export function CreateGarmentModal({ open, onClose }: CreateGarmentModalProps) {
   const save = useCreateGarment()
+  const queryClient = useQueryClient()
   const error = save.error ? toApiError(save.error) : null
   const [partial, setPartial] = useState<string | null>(null)
 
   const [name, setName] = useState('')
-  const [level, setLevel] = useState<GarmentSchoolLevel>('BOTH')
+  const [fitGroup, setFitGroup] = useState<FitGroup>('ALL')
+  const [colourCode, setColourCode] = useState('')
   const [colour, setColour] = useState('')
   // Empty means "no swatch chosen", which screens draw as a neutral rather
   // than as white — white is a real uniform colour.
@@ -63,7 +72,8 @@ export function CreateGarmentModal({ open, onClose }: CreateGarmentModalProps) {
 
   function reset() {
     setName('')
-    setLevel('BOTH')
+    setFitGroup('ALL')
+    setColourCode('')
     setColour('')
     setHex('')
     setPrice('')
@@ -98,7 +108,10 @@ export function CreateGarmentModal({ open, onClose }: CreateGarmentModalProps) {
     try {
       const garment = await save.mutateAsync({
         name: name.trim(),
-        school_level: level,
+        // No `school_level`: the server derives it from the fit group, and
+        // sending a second answer only risks contradicting the first.
+        fit_group: fitGroup,
+        colour_code: colourCode.trim().toUpperCase(),
         colour: colour.trim(),
         colour_hex: hex,
       })
@@ -108,6 +121,13 @@ export function CreateGarmentModal({ open, onClose }: CreateGarmentModalProps) {
           unit_price: price.trim(),
           active_from: todayISO(),
         })
+        // The creation above already invalidated the garment list, and that
+        // refetch ran *before* this price existed — so the cache now holds
+        // the garment with `current_price: null` and `useGarmentOptions`
+        // keeps it for ten minutes. Without this second invalidation a
+        // garment created with a price reads "Not priced" until the tab is
+        // left and come back to.
+        invalidatePricedViews(queryClient)
       } catch (cause) {
         setPartial(
           `${garment.name} was created, but its price was not set: ${
@@ -165,14 +185,17 @@ export function CreateGarmentModal({ open, onClose }: CreateGarmentModalProps) {
         />
 
         <Select
-          label="School level"
-          value={level}
-          onChange={(event) => setLevel(event.target.value as GarmentSchoolLevel)}
+          label="Class band"
+          value={fitGroup}
+          onChange={(event) => setFitGroup(event.target.value as FitGroup)}
         >
-          <option value="BOTH">Both — appears on either price list</option>
-          <option value="PS">Primary only</option>
-          <option value="HS">High School only</option>
+          {FIT_GROUPS.map((group) => (
+            <option key={group.value} value={group.value}>
+              {group.label}
+            </option>
+          ))}
         </Select>
+        <p className="form-hint">{priceListNote(fitGroup)}</p>
 
         {/*
           The swatches set the colour *name*, which is what the server
@@ -418,7 +441,8 @@ export function EditGarmentModal({
   const error = save.error ? toApiError(save.error) : null
 
   const [name, setName] = useState('')
-  const [level, setLevel] = useState<GarmentSchoolLevel>('BOTH')
+  const [fitGroup, setFitGroup] = useState<FitGroup>('ALL')
+  const [colourCode, setColourCode] = useState('')
   const [colour, setColour] = useState('')
   const [hex, setHex] = useState('')
   const [isActive, setIsActive] = useState(true)
@@ -429,7 +453,8 @@ export function EditGarmentModal({
   if (garment && loadedFor !== garment.id) {
     setLoadedFor(garment.id)
     setName(garment.name)
-    setLevel((garment.school_level as GarmentSchoolLevel) ?? 'BOTH')
+    setFitGroup((garment.fit_group as FitGroup) || 'ALL')
+    setColourCode(garment.colour_code ?? '')
     setColour(garment.colour ?? '')
     setHex(garment.colour_hex ?? '')
     setIsActive(garment.is_active !== false)
@@ -448,7 +473,8 @@ export function EditGarmentModal({
     save.mutate(
       {
         name: name.trim(),
-        school_level: level,
+        fit_group: fitGroup,
+        colour_code: colourCode.trim().toUpperCase(),
         colour: colour.trim(),
         colour_hex: hex,
         is_active: isActive,
@@ -494,14 +520,17 @@ export function EditGarmentModal({
         />
 
         <Select
-          label="School level"
-          value={level}
-          onChange={(event) => setLevel(event.target.value as GarmentSchoolLevel)}
+          label="Class band"
+          value={fitGroup}
+          onChange={(event) => setFitGroup(event.target.value as FitGroup)}
         >
-          <option value="BOTH">Both — appears on either price list</option>
-          <option value="PS">Primary only</option>
-          <option value="HS">High School only</option>
+          {FIT_GROUPS.map((group) => (
+            <option key={group.value} value={group.value}>
+              {group.label}
+            </option>
+          ))}
         </Select>
+        <p className="form-hint">{priceListNote(fitGroup)}</p>
 
         <div className="field field--stacked">
           <span className="field__label">Colour</span>

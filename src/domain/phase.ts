@@ -47,12 +47,12 @@
 const ALL_PHASES = 3
 
 /**
- * The phase each screen opens in. **Anything absent is open from Phase 1.**
+ * The phase each screen opens in. **Anything absent is Foundation — phase 0 —
+ * and open in every build.**
  *
- * Phases come from the project plan in the server's README:
- *
- * | 1 | Inbound: master data, group and production orders, receipts |
- * | 2 | Inventory adjustments |
+ * | 0 | Foundation: catalogue, sites, accounts, settings |
+ * | 1 | Inbound: production orders, receipts |
+ * | 2 | Inventory adjustments and transfers |
  * | 3 | Outbound: orders, picking, shipping, backorders |
  *
  * Paths are matched by prefix, so `/shipments` also covers
@@ -71,13 +71,34 @@ const OPENS_IN: Readonly<Record<string, number>> = {
   // transfers that post through the same ledger.
   '/adjustments': 2,
   '/transfers': 2,
-}
+
+  // Phase 1 — inbound. Receiving against a production order, and the orders
+  // themselves. Stock History comes with them: in Foundation nothing has
+  // moved, so the ledger is an empty screen inviting "is this broken?".
+  '/receiving': 1,
+  '/production-orders': 1,
+  '/stock-history': 1,
+
+  // Reports is **not** gated as a whole, and that was a mistake worth
+  // recording: `/reports` holds three different reports with three different
+  // phases. Gating the parent hid Price Lists, which is pure master data and
+  // the one report a client setting prices in Foundation actually needs.
+  // Only the costed one waits for something to have been received.
+  '/reports/procurement-costs': 1,
+
+  // Everything absent is Foundation (phase 0) and open from the first build:
+  // the dashboard, the catalogue (inventory, kits), the sites (schools,
+  // warehouses, tailoring centres), accounts and settings. That is the set a
+  // client needs to stand the system up before anything moves through it.
+};
 
 function readPhase(): number {
   const raw = import.meta.env.VITE_PHASE
   if (raw === undefined || raw === '') return ALL_PHASES
   const parsed = Number(raw)
-  if (!Number.isInteger(parsed) || parsed < 1) {
+  // `>= 0`, not `>= 1`: Foundation is phase 0, and rejecting it sent a build
+  // asking for the narrowest view straight to the widest one.
+  if (!Number.isInteger(parsed) || parsed < 0) {
     // Loud, because a typo here would otherwise ship a crippled build quietly.
     console.warn(`VITE_PHASE is "${raw}", which is not a phase number. Showing every phase.`)
     return ALL_PHASES
@@ -86,6 +107,18 @@ function readPhase(): number {
 }
 
 export const PHASE = readPhase()
+
+/*
+ * Said out loud on boot, because a build-time variable is otherwise invisible
+ * once deployed — there is no setting to read and no request to inspect, so
+ * "why is everything still showing" has no answer you can check from outside.
+ * One line in the console tells you whether the build heard you.
+ */
+if (PHASE < ALL_PHASES) {
+  console.info(`AsOne: VITE_PHASE=${PHASE}. Later phases are hidden from this build.`)
+} else {
+  console.info('AsOne: no VITE_PHASE set at build time — every phase is visible.')
+}
 
 /** True when this build is showing phase `n`. */
 export function phaseOpen(n: number): boolean {
@@ -102,10 +135,23 @@ export function phaseOpen(n: number): boolean {
 export function pathOpenInThisPhase(path: string): boolean {
   if (PHASE >= ALL_PHASES) return true // The common case: nothing is gated.
 
+  /*
+   * Longest prefix wins, not the first one that matches.
+   *
+   * `/reports/procurement-costs` sits under `/reports`, so a first-match loop
+   * would hand the answer to whichever happened to be declared first — an
+   * ordering dependency in a plain object, which is exactly the kind of thing
+   * that works until someone tidies the map alphabetically.
+   */
+  let best: number | null = null
+  let bestLength = -1
   for (const [prefix, opensIn] of Object.entries(OPENS_IN)) {
     if (path === prefix || path.startsWith(`${prefix}/`)) {
-      return PHASE >= opensIn
+      if (prefix.length > bestLength) {
+        bestLength = prefix.length
+        best = opensIn
+      }
     }
   }
-  return true
+  return best === null || PHASE >= best
 }

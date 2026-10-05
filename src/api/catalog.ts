@@ -211,8 +211,23 @@ export function garments(params?: {
  */
 export interface GarmentInput {
   name: string
-  school_level: GarmentSchoolLevel
+  /**
+   * The class band — NUR, P14, P57, S14, S56 or ALL.
+   *
+   * Send this rather than `school_level`. The server derives the price list
+   * from it (`Garment.PRICE_LIST_BY_FIT_GROUP`) and refuses a pair that
+   * disagrees, so supplying both is offering a second answer that can only
+   * contradict the first.
+   */
+  fit_group?: string
+  /**
+   * Optional, and only where there is no fit group to derive it from. Left
+   * out, the server defaults it and then works it out.
+   */
+  school_level?: GarmentSchoolLevel
   colour?: string
+  /** The colour's short code — CHK, GRY, NVY. Third part of a SKU number. */
+  colour_code?: string
   /**
    * The swatch, as "#RRGGBB".
    *

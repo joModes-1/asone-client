@@ -114,7 +114,10 @@ export function InventoryTable({
           <tbody>
             {visible.map((row) => {
               const rowKey = `${row.skuId}-${row.warehouseId}`
-              const low = row.minimumQuantity !== null && row.available <= row.minimumQuantity
+              // Never stocked counts as zero, and zero is below any floor —
+              // the case most worth an amber badge, not least worth one.
+              const low =
+                row.minimumQuantity !== null && (row.available ?? 0) <= row.minimumQuantity
               const isSelected = row.skuId === selectedSkuId
               return (
                 <tr

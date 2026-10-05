@@ -10,10 +10,13 @@
  * field are real rather than looking real:
  *
  *   - The bottom box read "GENERATED SKU SYSTEM PREVIEW" with a fabricated
- *     code (`UNI-PS-WS-08-W`). There is no such code — `Sku.number` is a
- *     bare sequential control number from a Postgres sequence
- *     (`catalog/services.py: next_sku_number`), unrelated to garment,
- *     level, size or colour. The box stays; what it says is honest instead.
+ *     code (`UNI-PS-WS-08-W`). At the time there was no such code and the
+ *     box was made honest by showing the real one. AsOne have since given us
+ *     a shape very close to that original mock — `UNI-NUR-CHS-XS-CHK` — and
+ *     the preview now composes it through `domain/skuNumbers`, which mirrors
+ *     `catalog/services.py: sku_code()` and is tested against it. It was
+ *     briefly hard-coded here as `code-SIZE`, which quietly went stale the
+ *     day the five-part shape arrived.
  *   - Color was a free dropdown of five names, independent of which garment
  *     was picked. Colour lives on `Garment`, not `Sku` — there is no second
  *     colour a SKU could have besides its garment's own. Picking "Maroon"
@@ -27,12 +30,14 @@ import { ChevronDown } from 'lucide-react'
 import { Alert, Button, Modal } from '@/components'
 import { toApiError } from '@/api/errors'
 import { swatchFor } from '@/domain/garmentColours'
+import { previewSkuNumber } from '@/domain/skuNumbers'
+import { FIT_GROUPS, type FitGroup } from '@/domain/fitGroups'
 import { useCreateSku } from '../hooks/useCreateSku'
 import { useGarmentOptions } from '../hooks/useGarmentOptions'
 import { useSizeOptions } from '../hooks/useSizeOptions'
 import { useWarehouseOptions } from '@/features/catalog/hooks/useWarehouseOptions'
 import { useOrgSettings } from '@/features/settings/hooks/useOrgSettings'
-import type { GarmentSchoolLevel, Sku } from '@/api/types'
+import type { Sku } from '@/api/types'
 
 const FORM_ID = 'create-sku-form'
 
@@ -68,7 +73,19 @@ export function CreateSkuModal({ isOpen, onClose, onSuccess }: CreateSkuModalPro
   const { sizes } = useSizeOptions()
   const { warehouses } = useWarehouseOptions()
 
-  const [levelFilter, setLevelFilter] = useState<GarmentSchoolLevel>('PS')
+  /**
+   * Narrows the garment list. Not a field on the SKU — a SKU is a garment
+   * and a size, and takes neither a level nor a band of its own.
+   *
+   * It was two pills, Primary and High, defaulting to Primary. Two problems
+   * with that: it is the wrong granularity now that garments carry one of
+   * five class bands, and defaulting to one of them meant every High School
+   * garment was hidden until somebody thought to click the other pill — a
+   * garment that looked as though it did not exist.
+   *
+   * Empty means no narrowing, which is why it is the default.
+   */
+  const [bandFilter, setBandFilter] = useState<FitGroup | ''>('')
   const [garmentId, setGarmentId] = useState('')
   const [sizeId, setSizeId] = useState('')
   const [descriptionOverride, setDescriptionOverride] = useState<string | null>(null)
@@ -90,9 +107,11 @@ export function CreateSkuModal({ isOpen, onClose, onSuccess }: CreateSkuModalPro
   const settings = useOrgSettings()
   const suggestedMinimum = settings.data?.default_minimum_stock_threshold
 
-  const visibleGarments = garments.filter(
-    (g) => g.school_level === levelFilter || g.school_level === 'BOTH',
-  )
+  // A garment cut for every band — socks, neckties — belongs in every list,
+  // the same way a BOTH garment appeared on either price list before.
+  const visibleGarments = bandFilter
+    ? garments.filter((g) => g.fit_group === bandFilter || g.fit_group === 'ALL')
+    : garments
   const garment = garments.find((g) => String(g.id) === garmentId) ?? null
   const size = sizes.find((s) => String(s.id) === sizeId) ?? null
   const canSubmit = Boolean(garmentId && sizeId) && !save.isPending
@@ -108,15 +127,17 @@ export function CreateSkuModal({ isOpen, onClose, onSuccess }: CreateSkuModalPro
       : ''
   const description = descriptionOverride ?? computedDescription
 
-  function handleLevelChange(next: GarmentSchoolLevel) {
-    setLevelFilter(next)
-    if (garment && garment.school_level !== next && garment.school_level !== 'BOTH') {
+  function handleBandChange(next: FitGroup | '') {
+    setBandFilter(next)
+    // Clear a chosen garment the new filter would hide, so the form cannot
+    // submit something the list no longer shows.
+    if (next && garment && garment.fit_group !== next && garment.fit_group !== 'ALL') {
       setGarmentId('')
     }
   }
 
   function handleReset() {
-    setLevelFilter('PS')
+    setBandFilter('')
     setGarmentId('')
     setSizeId('')
     setDescriptionOverride(null)
@@ -245,37 +266,30 @@ export function CreateSkuModal({ isOpen, onClose, onSuccess }: CreateSkuModalPro
         </div>
 
         <div className="create-sku-form__row-split">
+          {/*
+            A filter on the garment list, not a field on the SKU. Labelled so
+            — it read "School Level" beside the real fields and looked like
+            something being set.
+          */}
           <div className="create-sku-form__field">
-            <span className="create-sku-form__label">School Level</span>
-            <div
-              className="create-sku-form__radio-group"
-              role="radiogroup"
-              aria-label="School level"
-            >
-              <button
-                type="button"
-                role="radio"
-                aria-checked={levelFilter === 'PS'}
-                className={`create-sku-form__radio-pill ${
-                  levelFilter === 'PS' ? 'create-sku-form__radio-pill--active' : ''
-                }`}
-                onClick={() => handleLevelChange('PS')}
+            <label htmlFor="sku-band" className="create-sku-form__label">
+              Narrow by class band
+            </label>
+            <div className="create-sku-form__select-wrapper">
+              <select
+                id="sku-band"
+                className="input create-sku-form__select"
+                value={bandFilter}
+                onChange={(event) => handleBandChange(event.target.value as FitGroup | '')}
               >
-                <span className="create-sku-form__radio-dot" />
-                Primary (PS)
-              </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={levelFilter === 'HS'}
-                className={`create-sku-form__radio-pill ${
-                  levelFilter === 'HS' ? 'create-sku-form__radio-pill--active' : ''
-                }`}
-                onClick={() => handleLevelChange('HS')}
-              >
-                <span className="create-sku-form__radio-dot" />
-                High (HS)
-              </button>
+                <option value="">All garments</option>
+                {FIT_GROUPS.filter((group) => group.value !== 'ALL').map((group) => (
+                  <option key={group.value} value={group.value}>
+                    {group.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="create-sku-form__chevron" aria-hidden />
             </div>
           </div>
 
@@ -369,9 +383,7 @@ export function CreateSkuModal({ isOpen, onClose, onSuccess }: CreateSkuModalPro
         <div className="create-sku-form__preview-box">
           <p className="create-sku-form__preview-label">GENERATED SKU SYSTEM PREVIEW</p>
           <p className="create-sku-form__preview-code">
-            {garment?.code && size
-              ? `${garment.code}-${size.name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()}`
-              : 'Choose a garment and a size'}
+            {previewSkuNumber(garment, size?.name) ?? 'Choose a garment and a size'}
           </p>
         </div>
       </form>

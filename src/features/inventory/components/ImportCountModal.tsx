@@ -168,7 +168,10 @@ export function ImportCountModal({ open, onClose }: ImportCountModalProps) {
         skuId: hit.skuId,
         warehouseId: hit.warehouseId,
         // What the server compares against: on the shelf, reserved or not.
-        system: hit.available + hit.pick,
+        // Null means this SKU has never moved at this warehouse, which for a
+        // count is a genuine nothing — the counter is standing in front of an
+        // empty shelf either way.
+        system: (hit.available ?? 0) + (hit.pick ?? 0),
         problem: null,
       }
     })

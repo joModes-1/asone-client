@@ -37,6 +37,58 @@ describe('the phase gate', () => {
     }
   })
 
+  it('shows Foundation only when VITE_PHASE is 0', async () => {
+    const { PHASE, pathOpenInThisPhase } = await loadWithPhase('0')
+
+    // The regression that sent a Foundation build to production showing
+    // everything: the parse rejected 0 as "not a phase" and fell back to the
+    // widest view, so the narrowest request produced the opposite of it.
+    expect(PHASE).toBe(0)
+
+    for (const closed of [
+      '/receiving',
+      '/production-orders',
+      '/stock-history',
+      '/reports/procurement-costs',
+      '/adjustments',
+      '/transfers',
+      '/orders',
+      '/shipments',
+      '/backorders',
+    ]) {
+      expect(pathOpenInThisPhase(closed)).toBe(false)
+    }
+
+    // What a client needs to stand the system up.
+    for (const open of [
+      '/dashboard',
+      '/inventory',
+      '/kits',
+      '/schools',
+      '/warehouses',
+      '/tailoring-centers',
+      '/users',
+      '/profile',
+      '/settings',
+      // Pricing is master data, and setting prices is Foundation work. The
+      // price list is the one report that belongs with it.
+      '/reports',
+      '/reports/price-list',
+    ]) {
+      expect(pathOpenInThisPhase(open)).toBe(true)
+    }
+  })
+
+  it('gates a sub-report without gating its parent', async () => {
+    const { pathOpenInThisPhase } = await loadWithPhase('0')
+
+    // `/reports/procurement-costs` sits under `/reports`. Longest prefix
+    // decides, so declaration order in the map cannot change the answer.
+    expect(pathOpenInThisPhase('/reports')).toBe(true)
+    expect(pathOpenInThisPhase('/reports/price-list')).toBe(true)
+    expect(pathOpenInThisPhase('/reports/procurement-costs')).toBe(false)
+  })
+
   it('hides phase 2 and 3 work from a phase 1 build', async () => {
     const { pathOpenInThisPhase } = await loadWithPhase('1')
 
