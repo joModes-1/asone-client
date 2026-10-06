@@ -95,8 +95,18 @@ describe('the phase gate', () => {
     expect(pathOpenInThisPhase('/orders')).toBe(false)
     expect(pathOpenInThisPhase('/shipments')).toBe(false)
     expect(pathOpenInThisPhase('/backorders')).toBe(false)
-    expect(pathOpenInThisPhase('/adjustments')).toBe(false)
     expect(pathOpenInThisPhase('/transfers')).toBe(false)
+  })
+
+  it('opens stock corrections in a phase 1 build', async () => {
+    /* On AsOne's agreed Phase 1 list: "Stock correction — fix a wrong
+       quantity, with reason and audit trail". It was gated to phase 2,
+       which also contradicted the stock-count import: that sits on
+       Inventory in Foundation and posts an adjustment, so a count could be
+       imported while the screen showing what it did stayed hidden. */
+    const { pathOpenInThisPhase } = await loadWithPhase('1')
+
+    expect(pathOpenInThisPhase('/adjustments')).toBe(true)
   })
 
   it('leaves phase 1 work open in a phase 1 build', async () => {

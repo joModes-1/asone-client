@@ -67,17 +67,26 @@ const OPENS_IN: Readonly<Record<string, number>> = {
   '/shipments': 3,
   '/backorders': 3,
 
-  // Phase 2 — inventory adjustments, including the warehouse-to-warehouse
-  // transfers that post through the same ledger.
-  '/adjustments': 2,
+  // Phase 2 — warehouse-to-warehouse transfers.
+  //
+  // Adjustments used to sit here with them, and that was wrong: AsOne's
+  // agreed Phase 1 list names "Stock correction — fix a wrong quantity,
+  // with reason and audit trail", and the Adjustments screen is where that
+  // lives. It was also inconsistent in practice, because the stock-count
+  // import sits on Inventory (Foundation) and posts an adjustment — so a
+  // count could be imported while the screen showing what it did was
+  // hidden.
   '/transfers': 2,
 
   // Phase 1 — inbound. Receiving against a production order, and the orders
-  // themselves. Stock History comes with them: in Foundation nothing has
+  // themselves. Stock corrections too: the phase that puts stock on a shelf
+  // is the phase that needs a way to fix a miscount.
+  // Stock History comes with them: in Foundation nothing has
   // moved, so the ledger is an empty screen inviting "is this broken?".
   '/receiving': 1,
   '/production-orders': 1,
   '/stock-history': 1,
+  '/adjustments': 1,
 
   // Reports is **not** gated as a whole, and that was a mistake worth
   // recording: `/reports` holds three different reports with three different
