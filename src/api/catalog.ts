@@ -382,3 +382,51 @@ export function kitPriceList(params: { level?: GarmentSchoolLevel; on?: string }
 export function kitPriceGaps(params?: { level?: GarmentSchoolLevel; on?: string }) {
   return get<UnpriceableKit[]>('/catalog/price-lists/kits/gaps/', params ?? undefined)
 }
+
+/**
+ * What an import did, or would have done on a dry run.
+ *
+ * `unchanged` is worth showing: a re-import that creates nothing and leaves
+ * everything unchanged is the server saying "this file is already loaded",
+ * which reads as a failure until it is named.
+ */
+export interface CatalogueImportResult {
+  garments: number
+  sizes: number
+  skus: number
+  prices: number
+  unchanged: number
+  dry_run: boolean
+  detail: string
+}
+
+/** One row the file could not be read from. */
+export interface CatalogueImportRowError {
+  line: number
+  message: string
+}
+
+/**
+ * Upload a catalogue spreadsheet — garments, their sizes, their SKUs and a
+ * price for each.
+ *
+ * Multipart rather than JSON because it carries a file. A rejection comes
+ * back as a 400 whose body has `rows`, each with the line number it failed
+ * on; see `ImportGarmentsModal`, which shows them all at once rather than
+ * the first.
+ */
+export function importCatalogue(file: File, options: { dryRun: boolean; sheet?: string }) {
+  const body = new FormData()
+  body.append('file', file)
+  body.append('dry_run', String(options.dryRun))
+  if (options.sheet) body.append('sheet', options.sheet)
+
+  // The shared client sets `Content-Type: application/json` for every
+  // request. A multipart body needs the browser to set it instead, because
+  // only the browser knows the boundary string it generated — leaving the
+  // JSON header on sends the file as an unparseable blob and the server
+  // answers "no file was submitted".
+  return post<CatalogueImportResult>('/catalog/import/', body, {
+    headers: { 'Content-Type': undefined },
+  })
+}

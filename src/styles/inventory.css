@@ -380,9 +380,27 @@
 
 .sku-panel__title {
   margin: 2px 0 0 0;
-  font-size: var(--text-h2);
+  /*
+   * Two steps down from `--text-h2`, not one.
+   *
+   * At 24px this was sized for the old `BTU-8` codes. The 2027 catalogue
+   * numbers a SKU `UNI-P57-GYSH-XXL-GRY` — twenty characters in a panel about
+   * 320px wide — so the heading had grown to fill its own line and crowd the
+   * close button. The code is an identifier to read and check against a
+   * label, not a headline.
+   *
+   * `--text-body`, which is where it stopped looking oversized rather than
+   * where the scale said to stop: three steps, because the thing that changed
+   * was the length of the content, not the importance of the heading. The
+   * eyebrow above and the garment name below still bracket it, so it reads as
+   * the panel's subject without being the loudest thing in it.
+   */
+  font-size: var(--text-body);
   font-weight: var(--weight-bold);
   color: var(--text-primary);
+  /* Twenty characters of hyphenated code has no sensible wrap point; let it
+     break rather than push the panel wider. */
+  overflow-wrap: anywhere;
 }
 
 .sku-panel__close {
@@ -1137,4 +1155,23 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+/*
+ * The per-row failures from a catalogue import.
+ *
+ * A list rather than a paragraph because there may be thirty of them, each
+ * naming a line somebody has to go and find in a spreadsheet. Scrolls at a
+ * fixed height so a bad file cannot push the dialogue's buttons off screen —
+ * the whole point is to read these and then press Cancel.
+ */
+.import-errors {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-4);
+  max-height: 11rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-caption);
 }

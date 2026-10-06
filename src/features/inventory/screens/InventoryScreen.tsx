@@ -17,7 +17,7 @@
  * whoever wants to compare both sites at once.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Download, Plus } from 'lucide-react'
 import { SplitButton, TabBar } from '@/components'
 import { can } from '@/domain/access'
@@ -25,9 +25,11 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { AppShell } from '@/features/shell/components/AppShell'
 import { downloadFile, toCsv } from '@/domain/csv'
 import { useWarehouseFilter } from '@/features/shell/hooks/useWarehouseFilter'
+import { INVENTORY_EXPORT_HEADERS } from '@/domain/stockCount'
 import { CreateSkuModal } from '../components/CreateSkuModal'
 import { CreateGarmentModal, CreateSizeModal } from '../components/CreateGarmentModal'
 import { ImportCountModal } from '../components/ImportCountModal'
+import { ImportGarmentsModal } from '../components/ImportGarmentsModal'
 import { EditSkuModal } from '../components/EditSkuModal'
 import { GarmentsTab } from '../components/GarmentsTab'
 import { InventoryFilterBar } from '../components/InventoryFilterBar'
@@ -61,6 +63,7 @@ export function InventoryScreen() {
   const [page, setPage] = useState(1)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isGarmentOpen, setIsGarmentOpen] = useState(false)
+  const [isGarmentImportOpen, setIsGarmentImportOpen] = useState(false)
   const [isSizeOpen, setIsSizeOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -73,7 +76,22 @@ export function InventoryScreen() {
   // drops out of the current view entirely, there's nothing to derive and
   // the panel simply doesn't render — never a stale panel showing a filter
   // that no longer applies.
-  const [selectedSkuId, setSelectedSkuId] = useState<number | null>(null)
+  /**
+   * Which row the detail panel is showing — a SKU **and** a warehouse.
+   *
+   * The SKU id alone was ambiguous and silently wrong. The table holds one
+   * row per SKU per warehouse, so `rows.find(r => r.skuId === id)` always
+   * returned the *first* warehouse's row whichever one was clicked: open
+   * the Serere line and the panel showed Namayemba's figures.
+   *
+   * The edit dialogue made that costly rather than merely confusing. Its
+   * minimum-stock field writes against `row.warehouseId`, so a floor set
+   * from the Serere row landed on Namayemba — a quiet wrong answer, on the
+   * warehouse nobody was looking at.
+   */
+  const [selected, setSelected] = useState<{ skuId: number; warehouseId: number } | null>(
+    null,
+  )
 
   const { user } = useAuth()
   // Garments and sizes are the leads' column (F05) — narrower than SKUs,
@@ -81,31 +99,53 @@ export function InventoryScreen() {
   const mayEditCatalogue = can(user, 'table_updates')
 
   const { rows, isLoading } = useInventoryRows(filters)
-  const selectedRow = selectedSkuId !== null ? (rows.find((r) => r.skuId === selectedSkuId) ?? null) : null
+  const selectedRow =
+    selected !== null
+      ? (rows.find(
+          (r) => r.skuId === selected.skuId && r.warehouseId === selected.warehouseId,
+        ) ?? null)
+      : null
   const { sizes } = useSizeOptions()
 
-  const { warehouseId, canSwitch, options, select } = useWarehouseFilter()
-  // `options` arrives async (a fetch), so this can't fire once on mount —
-  // it has to wait for the list to actually load, then act exactly once.
-  // The ref is what makes it "once": without it, picking "All warehouses"
-  // back deliberately would just get auto-narrowed again on the next render.
-  const hasAutoSelected = useRef(false)
-  useEffect(() => {
-    if (hasAutoSelected.current) return
-    if (warehouseId === null && canSwitch && options.length > 0) {
-      hasAutoSelected.current = true
-      select(options[0].id)
-    }
-  }, [warehouseId, canSwitch, options, select])
+  const { warehouseId, options, select } = useWarehouseFilter()
+  /*
+   * Opening Inventory used to narrow itself to the first warehouse as soon
+   * as the warehouse list loaded. Removed: it answered a question nobody had
+   * asked, and answered it differently depending on which warehouse happened
+   * to sort first.
+   *
+   * "All warehouses" is already a supported state everywhere downstream —
+   * `useInventoryRows` reads `warehouseId === null` as every site the role
+   * may see — so there was nothing to protect against. What it did instead
+   * was hide half the stock from a lead who had opened the screen to look at
+   * all of it, with a filter they had not set and might not notice.
+   *
+   * A lead who wants one site picks it. Site-bound roles are pinned by the
+   * server regardless (see `StockLevelView`), so this never applied to them.
+   */
 
   function applyFilter(next: Partial<InventoryFilters>) {
     setFilters((current) => ({ ...current, ...next }))
     setPage(1)
   }
 
+  /**
+   * The overview as a file, and a stock-count sheet in the same breath.
+   *
+   * `Counted` is written deliberately empty. Exporting and importing straight
+   * back used to fail with "must include one called SKU and one called
+   * Counted" — the export had SKU and Warehouse but nothing to count into,
+   * so the obvious round trip was the one thing that did not work.
+   *
+   * It sits between the identity columns and the system's own figures: that
+   * is where somebody walking the shelves writes, and it keeps Available
+   * next to it to compare against. It is never pre-filled with Available —
+   * importing the system's own numbers back would post no differences while
+   * looking like a count had happened.
+   */
   function handleExport() {
     const csv = toCsv(
-      ['SKU', 'Garment', 'Description', 'Level', 'Size', 'Color', 'Warehouse', 'Available', 'Pick', 'Shipped', 'Min. Stock', 'Value'],
+      INVENTORY_EXPORT_HEADERS,
       rows.map((row) => [
         row.skuNumber,
         row.garmentName,
@@ -114,6 +154,7 @@ export function InventoryScreen() {
         row.sizeName,
         row.colour,
         row.warehouseName,
+        '',
         row.available,
         row.pick,
         row.shipped,
@@ -204,6 +245,16 @@ export function InventoryScreen() {
                             hint: 'Shared across garments.',
                             onSelect: () => setIsSizeOpen(true),
                           },
+                          {
+                            // Deliberately not beside "Import stock count…".
+                            // That one posts to an append-only ledger and is
+                            // undone only by posting more; this creates
+                            // products, which can be edited. Sitting them
+                            // together would make the two look equivalent.
+                            label: 'Import garments…',
+                            hint: 'A spreadsheet of garments, sizes and prices.',
+                            onSelect: () => setIsGarmentImportOpen(true),
+                          },
                         ]
                       : []
                   }
@@ -253,8 +304,11 @@ export function InventoryScreen() {
             canCreate={mayEditCatalogue}
             page={page}
             onPageChange={setPage}
-            onSelectRow={(row) => setSelectedSkuId(row.skuId)}
-            selectedSkuId={selectedSkuId}
+            onSelectRow={(row) =>
+              setSelected({ skuId: row.skuId, warehouseId: row.warehouseId })
+            }
+            selectedSkuId={selected?.skuId ?? null}
+            selectedWarehouseId={selected?.warehouseId ?? null}
             onCreate={() => setIsCreateOpen(true)}
             isCompact={Boolean(selectedRow)}
           />
@@ -265,7 +319,7 @@ export function InventoryScreen() {
         {selectedRow && (
           <SkuDetailPanel
             row={selectedRow}
-            onClose={() => setSelectedSkuId(null)}
+            onClose={() => setSelected(null)}
             onEdit={() => setIsEditOpen(true)}
           />
         )}
@@ -275,6 +329,10 @@ export function InventoryScreen() {
       <CreateGarmentModal open={isGarmentOpen} onClose={() => setIsGarmentOpen(false)} />
       <CreateSizeModal open={isSizeOpen} onClose={() => setIsSizeOpen(false)} />
       <ImportCountModal open={isImportOpen} onClose={() => setIsImportOpen(false)} />
+      <ImportGarmentsModal
+        open={isGarmentImportOpen}
+        onClose={() => setIsGarmentImportOpen(false)}
+      />
       <EditSkuModal
         open={isEditOpen}
         onClose={() => setIsEditOpen(false)}

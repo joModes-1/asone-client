@@ -47,16 +47,11 @@ import { useMemo, useState, type ChangeEvent } from 'react'
 import { Alert, Button, Modal } from '@/components'
 import * as adjustmentsApi from '@/api/adjustments'
 import { toApiError } from '@/api/errors'
+import { parseCsv, type ParsedRow } from '@/domain/stockCount'
 import { todayISO } from '@/domain/dates'
 import { formatQuantity, formatSignedQuantity } from '@/domain/money'
 import { useInventoryRows } from '../hooks/useInventoryRows'
 
-interface ParsedRow {
-  line: number
-  sku: string
-  warehouse: string
-  counted: number
-}
 
 interface MatchedRow extends ParsedRow {
   skuId: number | null
@@ -66,45 +61,6 @@ interface MatchedRow extends ParsedRow {
   problem: string | null
 }
 
-/**
- * A deliberately small CSV reader: split on newlines, then on commas.
- *
- * No quoting, no embedded commas — a stock count is three short columns and
- * a parser that handles every edge of RFC 4180 would be more code than the
- * feature. A file it cannot read fails loudly at the matching step rather
- * than being half-understood.
- */
-function parseCsv(text: string): { rows: ParsedRow[]; error: string | null } {
-  const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '')
-  if (lines.length === 0) return { rows: [], error: 'That file is empty.' }
-
-  const header = lines[0].split(',').map((cell) => cell.trim().toLowerCase())
-  const skuAt = header.findIndex((cell) => cell.includes('sku'))
-  const whAt = header.findIndex((cell) => cell.includes('warehouse'))
-  const countAt = header.findIndex(
-    (cell) => cell.includes('count') || cell.includes('quantity') || cell.includes('qty'),
-  )
-
-  if (skuAt === -1 || countAt === -1) {
-    return {
-      rows: [],
-      error:
-        'The first row must name the columns, and must include one called SKU and one called Counted.',
-    }
-  }
-
-  const rows = lines.slice(1).map((line, index) => {
-    const cells = line.split(',').map((cell) => cell.trim())
-    return {
-      line: index + 2,
-      sku: cells[skuAt] ?? '',
-      warehouse: whAt === -1 ? '' : (cells[whAt] ?? ''),
-      counted: Number(cells[countAt]),
-    }
-  })
-
-  return { rows, error: null }
-}
 
 interface ImportCountModalProps {
   open: boolean

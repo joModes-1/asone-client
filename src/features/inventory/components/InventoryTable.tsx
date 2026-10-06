@@ -25,6 +25,8 @@ interface InventoryTableProps {
   onPageChange: (page: number) => void
   onSelectRow: (row: InventoryRow) => void
   selectedSkuId: number | null
+  /** Highlighting needs both: one SKU has a row per warehouse. */
+  selectedWarehouseId: number | null
   onCreate: () => void
   /** False for a role that reads the catalogue but may not add to it. */
   canCreate: boolean
@@ -39,6 +41,7 @@ export function InventoryTable({
   onPageChange,
   onSelectRow,
   selectedSkuId,
+  selectedWarehouseId,
   onCreate,
   isCompact = false,
 }: InventoryTableProps) {
@@ -118,7 +121,10 @@ export function InventoryTable({
               // the case most worth an amber badge, not least worth one.
               const low =
                 row.minimumQuantity !== null && (row.available ?? 0) <= row.minimumQuantity
-              const isSelected = row.skuId === selectedSkuId
+              // Both halves, or every warehouse's row for this SKU lit up
+              // at once and the highlight did not say which one was open.
+              const isSelected =
+                row.skuId === selectedSkuId && row.warehouseId === selectedWarehouseId
               return (
                 <tr
                   key={rowKey}
