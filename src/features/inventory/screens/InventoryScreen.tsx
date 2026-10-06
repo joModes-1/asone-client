@@ -106,6 +106,7 @@ export function InventoryScreen() {
         ) ?? null)
       : null
   const { sizes } = useSizeOptions()
+  const canAdjustInventory = can(user, 'inventory_adjustments')
 
   const { warehouseId, options, select } = useWarehouseFilter()
   /*
@@ -208,13 +209,33 @@ export function InventoryScreen() {
                   variant="secondary"
                   menuLabel="More data options"
                   onClick={handleExport}
-                  options={[
-                    {
-                      label: 'Import stock count…',
-                      hint: 'A counted quantity per SKU. The system posts the difference.',
-                      onSelect: () => setIsImportOpen(true),
-                    },
-                  ]}
+                  options={
+                    /*
+                     * A stock count posts inventory adjustments, which
+                     * AsOne's matrix gives to Finance alone — so every other
+                     * role could fill the whole dialogue in, press go, and
+                     * collect one "Your role does not have access to this
+                     * function" per row. Hidden rather than shown-and-
+                     * refused, the same way New garment is.
+                     *
+                     * Export stays for everyone: reading the sheet is not
+                     * the part anybody lacks.
+                     *
+                     * Worth knowing this is open question Q3 — the column is
+                     * Finance-only as written, which means the warehouse
+                     * that does the counting cannot post its own result. If
+                     * AsOne widen that cell, this follows automatically.
+                     */
+                    canAdjustInventory
+                      ? [
+                          {
+                            label: 'Import stock count…',
+                            hint: 'A counted quantity per SKU. The system posts the difference.',
+                            onSelect: () => setIsImportOpen(true),
+                          },
+                        ]
+                      : []
+                  }
                 >
                   <Download size={16} aria-hidden />
                   Export CSV

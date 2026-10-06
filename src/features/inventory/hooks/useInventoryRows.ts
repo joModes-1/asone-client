@@ -31,6 +31,7 @@ import { useQueries } from '@tanstack/react-query'
 import * as catalogApi from '@/api/catalog'
 import * as inventoryApi from '@/api/inventory'
 import { keys } from '@/api/keys'
+import { fetchAll } from '@/api/pageSize'
 import {
   canEditOrgSettings,
   canReadMinimumStockLevels,
@@ -192,17 +193,31 @@ export function useInventoryRows(filters: InventoryFilters): InventoryResult {
     queries: [
       {
         queryKey: keys.inventorySkus(level, sizeId, isActive),
+        /*
+         * Every page, not the first.
+         *
+         * This asked for `page_size: 200`, which is the server's ceiling —
+         * so on AsOne's real catalogue of 308 SKUs it quietly received 200
+         * and the table was 108 rows short with nothing to say so. The same
+         * list backs the stock-count matcher, which rejected any of those
+         * 108 as "Unknown SKU": it worked on a 37-SKU demo and failed on
+         * the live database.
+         */
         queryFn: () =>
-          catalogApi.skus({
-            garment__school_level: level ?? undefined,
-            size: sizeId ?? undefined,
-            is_active: isActive ?? undefined,
-            page_size: 200,
-          }),
+          fetchAll((page) =>
+            catalogApi.skus({
+              garment__school_level: level ?? undefined,
+              size: sizeId ?? undefined,
+              is_active: isActive ?? undefined,
+              ...page,
+            }),
+          ),
       },
       {
         queryKey: keys.garments(),
-        queryFn: () => catalogApi.garments({ page_size: 200 }),
+        // Same ceiling, same reason: 53 garments today, but the catalogue
+        // grows with every class band AsOne add.
+        queryFn: () => fetchAll((page) => catalogApi.garments(page)),
         staleTime: 10 * 60 * 1000,
         enabled: mayReadGarments,
       },
@@ -213,7 +228,12 @@ export function useInventoryRows(filters: InventoryFilters): InventoryResult {
       {
         queryKey: keys.minimumStockLevels(warehouseId),
         queryFn: () =>
-          catalogApi.minimumStockLevels({ warehouse: warehouseId ?? undefined, page_size: 200 }),
+          fetchAll((page) =>
+            catalogApi.minimumStockLevels({
+              warehouse: warehouseId ?? undefined,
+              ...page,
+            }),
+          ),
         enabled: mayReadMinimums,
       },
       {
@@ -227,10 +247,11 @@ export function useInventoryRows(filters: InventoryFilters): InventoryResult {
     ],
   })
 
-  const skus = skusQuery.data?.results ?? []
-  const garments = garmentsQuery.data?.results ?? []
+  // Whole lists now, not first pages — see `fetchAll`.
+  const skus = skusQuery.data ?? []
+  const garments = garmentsQuery.data ?? []
   const stockLevels = stockQuery.data ?? []
-  const minimums = minimumsQuery.data?.results ?? []
+  const minimums = minimumsQuery.data ?? []
   const shippedByKey = shippedQuery.data ?? new Map<string, number>()
 
   /*
