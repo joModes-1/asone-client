@@ -115,8 +115,10 @@ export function ImportGarmentsModal({ open, onClose }: ImportGarmentsModalProps)
             Cancel
           </Button>
           {checked ? (
+            // Names the number it is about to write. "Import for real" said
+            // nothing about whether the previous step had already done it.
             <Button onClick={() => run(false)} disabled={busy}>
-              {busy ? 'Importing…' : 'Import for real'}
+              {busy ? 'Importing…' : `Import ${checked.garments} garments`}
             </Button>
           ) : (
             <Button onClick={() => run(true)} disabled={!file || busy}>
@@ -163,18 +165,29 @@ export function ImportGarmentsModal({ open, onClose }: ImportGarmentsModalProps)
           </Alert>
         )}
 
+        {/*
+          Warning, not success — and the difference is the whole point.
+          
+          This was a green alert reading "Checked, nothing written yet. This
+          file would create 17 garments, 97 SKUs…". Green plus large numbers
+          reads as *done*: somebody checked a file, saw the counts, closed
+          the dialogue, and only found out nothing had been written when the
+          stock count that followed rejected every row as an unknown SKU.
+          The qualifier was in the first four words and the colour drowned it.
+        */}
         {checked && (
-          <Alert tone="success">
-            <strong>Checked, nothing written yet.</strong> This file would create{' '}
-            {checked.garments} garments, {checked.sizes} sizes, {checked.skus} SKUs and{' '}
-            {checked.prices} prices.
+          <Alert tone="warning">
+            <strong>Nothing has been imported yet.</strong> This is a check.
+            It would create {checked.garments} garments, {checked.sizes} sizes,{' '}
+            {checked.skus} SKUs and {checked.prices} prices.
             {checked.unchanged > 0 && (
               <>
                 {' '}
                 {checked.unchanged} {checked.unchanged === 1 ? 'garment is' : 'garments are'}{' '}
                 already in the catalogue and would be left alone.
               </>
-            )}
+            )}{' '}
+            <strong>Press “Import {checked.garments} garments” below to write it.</strong>
           </Alert>
         )}
       </div>
