@@ -5111,6 +5111,8 @@ export interface components {
             garment?: number;
             readonly garment_name?: string;
             readonly garment_school_level?: string;
+            readonly garment_colour?: string;
+            readonly garment_colour_hex?: string;
             size?: number;
             readonly size_name?: string;
             /** @description Filled in from the garment and size if left blank. */
@@ -5907,6 +5909,8 @@ export interface components {
             garment: number;
             readonly garment_name: string;
             readonly garment_school_level: string;
+            readonly garment_colour: string;
+            readonly garment_colour_hex: string;
             size: number;
             readonly size_name: string;
             /** @description Filled in from the garment and size if left blank. */

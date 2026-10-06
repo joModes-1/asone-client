@@ -320,9 +320,22 @@ export function useInventoryRows(filters: InventoryFilters): InventoryResult {
         skuNumber: sku.number,
         garmentName: sku.garment_name,
         description: sku.description || sku.garment_name,
-        level: garment?.school_level ?? 'BOTH',
+        /*
+         * Off the SKU, not the garment.
+         *
+         * Garments are leads-only (F05), so for Finance, the warehouse and
+         * the schools `garment` is undefined here and these fell back to
+         * 'BOTH' and an empty colour — a Colour column of dashes, and a
+         * Level that said "Both" about everything. The data was never
+         * missing; those roles were simply not allowed to fetch the row it
+         * sat on, so the SKU now reads both through.
+         *
+         * The garment is still preferred where it is there: a lead editing
+         * one sees the new value before the SKU list has refetched.
+         */
+        level: (garment?.school_level ?? sku.garment_school_level ?? 'BOTH') as GarmentSchoolLevel,
         sizeName: sku.size_name,
-        colour: garment?.colour ?? '',
+        colour: garment?.colour ?? sku.garment_colour ?? '',
         warehouseId: warehouse.id,
         warehouseName: warehouse.name,
         available: stock?.level ?? null,
