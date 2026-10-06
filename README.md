@@ -135,43 +135,89 @@ unless somebody confirms it. That gap is where losses live.
 
 ### How it works
 
-A price is **a period, not a number**. Each price row carries a start date and
-an end date, so it says *this garment cost this much between these dates*.
-Rows are never edited to change a price.
+A price is **a period, not a number**. Each `GarmentPrice` row carries a start
+date and an end date, so it does not say *"a White Shirt costs 25,000"* — it
+says *"a White Shirt cost 25,000 between these dates."*
 
-Changing a price **closes** the current one on the date you choose and
-**opens** a new one. That is why a March invoice still reprints at March's
-price however many times the price moves afterwards.
+Real rows from the system:
 
-Price hangs off the **garment**, not the SKU — a Blue Tunic costs the same in
-size 8 and size 16. A size premium cannot exist in this model.
+| White Shirt (WSH) | From | Until |
+|---|---|---|
+| UGX 25,000 | 2026-01-01 | 2027-01-01 |
+| UGX 28,000 | 2027-01-01 | open-ended |
+
+**Changing a price never edits a row.** Repricing does two things: it *closes*
+the open-ended row by stamping an expiry on it, then *opens* a new one. The old
+row stays exactly as it was. That is why a March invoice reprinted next term
+still shows March's price, however many times the price has moved since.
+Editing in place would rewrite history and today's figure in one stroke.
+
+Three details that matter in practice:
+
+- **The end date is exclusive** — the field's own help text reads *"first day
+  this price NO LONGER applies."* Above, 2027-01-01 is the first day of 28,000
+  and the day 25,000 stops. Inclusive end dates make consecutive prices
+  ambiguous on the changeover day, which is precisely the day somebody raises
+  an invoice and asks which price was right.
+- **Postgres enforces it, not the app.** An exclusion constraint
+  (`no_overlapping_garment_prices`) means two rows can never claim the same
+  garment on the same day. It holds against the admin, a management command, a
+  CSV import and two simultaneous requests alike, so the price of a shirt stays
+  a fact rather than a question.
+- **Price hangs off the garment, not the SKU** — a Blue Tunic costs the same in
+  size 8 and size 16. A size premium cannot exist in this model.
+
+`unit_price` is one figure used for **both** purchase and selling price — that
+is AsOne's own practice, not a simplification. It is a `Decimal`, never a
+float, because a rounding error in a kit price is a rounding error on an
+invoice.
 
 *Program Lead sets prices · Finance reads lists · Schools see prices when ordering*
 
 ### Test it
 
-1. As **Program Lead**, go to **Inventory → Garments**.
-   → Expect a "Price today" column and an "Action" column.
-2. Reprice any garment. Set a new price and an *Applies from* date.
-   → Expect the dialogue to list the full price history underneath, oldest
-   periods intact.
-3. Go to **Reports → Pricing Reports → View Report**.
+Everything here is on screens open from Foundation, so it can be tested in the
+first client build.
+
+1. As a **Program Lead**, go to **Inventory → Garments**.
+   → Expect a **Price today** column and an **Action** column. Any unpriced
+   garment reads **Not priced** in red, with an amber banner above counting
+   them.
+2. Click **Price** on any row. Set a new amount and an *Applies from* date.
+   → Expect the dialogue to list the full price history underneath, **oldest
+   periods intact**. That is the thing to look for — nothing should have been
+   overwritten.
+3. Reprice **White Shirt**, which already has the two periods above.
+   → Expect both of them still present and unchanged afterwards, with your new
+   one added.
+4. Go to **Reports → Pricing Reports → View Report**.
    → Expect the Primary School list, and an amber banner naming any unpriced
    garment.
-4. Switch the list to **High School**.
-   → Expect a different, shorter set. Garments marked for both levels appear
-   on each list.
-5. Set the date to **2025-01-01**.
+5. Switch the list to **High School**.
+   → Expect a different, shorter set. Garments marked for both levels appear on
+   each list.
+6. Set the date to **2025-01-01**.
    → Expect an empty list — nothing was priced then. This proves the date
-   control is real.
-6. Give the named garment a price, then reload the report.
+   control is real rather than decorative.
+7. Give the named garment a price, then reload the report.
    → Expect the amber banner to clear and the garment to join the list.
+8. **Try to break it.** Reprice a garment with a date that overlaps a period it
+   already has.
+   → Expect a refusal: *"This garment already has a price covering part of that
+   period. Close the existing price first."* That message comes from the
+   database, not the form.
 
 > **Why the banner matters.** A garment with no price on the chosen date is
 > *left off the list entirely*, never shown at zero — a line with no price is
 > worse than no line on a document a school buys from. But that omission is
 > invisible, which is why the gap report is a banner on the page rather than a
 > second screen somebody has to remember to open.
+
+> **Open question for AsOne.** Should a price change apply from a chosen date,
+> or immediately? The system does dated, which is the safer choice and what
+> makes the audit trail work — but nobody at AsOne has confirmed it. If they
+> expect "change it and it is changed, now", the behaviour is identical for the
+> common case (set the date to today) and only the screen would be simpler.
 
 ---
 
@@ -563,28 +609,55 @@ testing.
 
 ### Questions for AsOne
 
-1. **Who is "School Monitor"?** Their chart says an order waits on hold until
-   School Monitor confirms payment, and nobody has said what that is. We have
-   coded it as Finance — our reading, not their instruction. One permission
-   class changes when they answer.
-2. **Should a price change apply from a chosen date, or immediately?** The
-   system does dated. Safer, but unconfirmed.
-3. **Should inventory value count Available only, or Available plus
-   reserved?** Today a SKU with 640 units reserved for orders is valued at
-   nothing.
-4. **Should the warehouse be able to post the count it takes?** The warehouse
-   does the counting but only Finance can post the result. That is what the
-   access matrix says and may well be intentional separation of duties, but
-   it is worth confirming whoever counts the shelf is happy to hand the number
-   to someone else to enter.
-5. **What happens when a delivery arrives damaged?** The school can record a
-   note against it and nothing acts on that note. Inventing a process would be
-   worse than leaving it for a person to read.
-6. **Does every school have a working computer?** If not, somebody enters
-   orders on their behalf and the permissions change.
-7. **Do we need students per school?** Orders carry a free-text student name;
-   students have no accounts and the school is the customer. Schools already
-   carry a student count. Worth confirming that is enough.
+Each one is a decision we made on AsOne's behalf because the brief did not
+settle it. All are cheap to confirm now and expensive to discover later. The
+first three change built behaviour; the rest confirm it.
+
+**Blocking — a built behaviour changes when they answer**
+
+1. **Who is "School Monitor"?**
+   Their chart says an order waits on Hold until School Monitor confirms
+   payment, and nobody has said what that is — a person, a role, a
+   spreadsheet, another system. We have coded it as **Finance**: our reading,
+   not their instruction. One permission class changes when they answer.
+
+2. **Should a price change apply from a chosen date, or immediately?**
+   The system does **dated** — you pick when the new price starts and may set
+   it in the future. Safer, and it is what makes a reprinted invoice match the
+   original. If they expect "change it and it is changed, now", the behaviour
+   is identical for the common case and only the screen gets simpler.
+
+3. **Can a garment ever cost more in a larger size?**
+   Price is attached to the **garment**, so every size shares one price — a
+   size premium is not unbuilt, it is *impossible* in the model. If the
+   intention was ever a price per SKU, this is the moment to say so; changing
+   it later means moving the price table and every report that reads it.
+
+**Confirming — we believe the behaviour is right, but nobody has said so**
+
+4. **Should inventory value count Available only, or Available plus reserved?**
+   Today a SKU with 640 units reserved against orders is valued at nothing.
+   The stock is real and in the building; only the arithmetic disagrees.
+
+5. **Should the warehouse be able to post the count it takes?**
+   The warehouse counts the shelf but only Finance can post the result. That
+   is what the access matrix says, and it may well be deliberate separation of
+   duties — worth confirming whoever counts is content to hand the number to
+   somebody else to enter.
+
+6. **What happens when a delivery arrives damaged?**
+   The school can record a note against it and nothing acts on that note.
+   Inventing a process would be worse than leaving it for a person to read,
+   but somebody should know the note is all there is.
+
+7. **Does every school have a working computer?**
+   If not, somebody enters orders on their behalf and the permissions change —
+   the point of sale stops being School Staff only.
+
+8. **Do we need students per school?**
+   Orders carry a free-text student name; students have no accounts and the
+   school is the customer. Schools already carry a student count. Worth
+   confirming that is enough before anybody builds a student record.
 
 ---
 

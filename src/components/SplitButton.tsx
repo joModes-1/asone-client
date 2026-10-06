@@ -73,6 +73,28 @@ export function SplitButton({
     }
   }, [open])
 
+  /*
+   * No options, no caret.
+   *
+   * Callers hide individual entries by role — `options={mayDo ? [...] : []}`
+   * — and an empty array still drew the caret, so a Program Lead looking at
+   * Export got a dropdown that opened onto nothing. Deciding it here rather
+   * than at each call site means no caller can reintroduce it, and a caller
+   * whose options are all hidden gets a plain button instead.
+   */
+  if (options.length === 0) {
+    return (
+      <button
+        type="button"
+        className={`btn btn--${variant}`}
+        onClick={onClick}
+        disabled={disabled}
+      >
+        {children}
+      </button>
+    )
+  }
+
   return (
     <div className="split" ref={root}>
       <button
