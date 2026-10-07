@@ -150,7 +150,15 @@ export function EditSkuModal({ open, onClose, row }: EditSkuModalProps) {
       onClose={close}
       title={`Edit ${row.skuNumber}`}
       subtitle="The description, its minimum here, and whether it can still be ordered."
-      size="sm"
+      /*
+       * `md` (560px), not the default `sm` (440px). This dialogue is not the
+       * bare stack of fields a narrow column suits: two of its five rows are
+       * explanatory paragraphs — why garment and size cannot be changed, and
+       * what a minimum does — and at 440px those set to four and five lines
+       * each. The title carries a SKU code too, and the 2027 codes run to
+       * twenty characters.
+       */
+      size="md"
       footer={
         <div className="modal__foot-actions">
           <Button variant="secondary" onClick={close} disabled={pending}>
