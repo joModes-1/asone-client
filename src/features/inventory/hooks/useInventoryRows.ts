@@ -118,7 +118,15 @@ export interface InventoryRow {
   available: number | null
   /** Reserved for picking, or null — see `available`. */
   pick: number | null
-  shipped: number
+  /**
+   * Shipped out of this warehouse, or `null` where this SKU has never moved
+   * here — the same rule as `available` and `pick` above.
+   *
+   * This was left at 0 when those two became nullable, so a never-stocked
+   * row read "— — 0" across its three quantity columns: two honest dashes
+   * and one fabricated zero, side by side on the same line.
+   */
+  shipped: number | null
   /** Null when no floor is configured for this SKU at this warehouse. */
   minimumQuantity: number | null
   /**
@@ -340,7 +348,10 @@ export function useInventoryRows(filters: InventoryFilters): InventoryResult {
         warehouseName: warehouse.name,
         available: stock?.level ?? null,
         pick: stock?.reserved ?? null,
-        shipped: shippedByKey.get(key) ?? 0,
+        // Null, not 0, where nothing has moved — see the field above. The
+        // ledger is only consulted for SKUs that have moved, so an absent
+        // key means "never here", not "shipped none".
+        shipped: stock || shippedByKey.has(key) ? (shippedByKey.get(key) ?? 0) : null,
         minimumQuantity: minimum?.minimum_quantity ?? null,
         minimumId: minimum?.id ?? null,
         value: stock?.value ?? null,
