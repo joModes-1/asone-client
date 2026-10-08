@@ -30,6 +30,7 @@
 
 import { useQueries } from '@tanstack/react-query'
 import * as catalogApi from '@/api/catalog'
+import { fetchAll } from '@/api/pageSize'
 import * as inventoryApi from '@/api/inventory'
 import { sumMoney } from '@/domain/money'
 import { canReadMinimumStockLevels } from '@/domain/access'
@@ -95,14 +96,18 @@ export function useStockReport({ asOf }: StockReportFilters = {}): StockReport {
       },
       {
         queryKey: ['skus', 'all'],
-        queryFn: () => catalogApi.skus(),
+        /* Every SKU, paged to the end. This sent no `page_size` at all, so
+           it took the server's default of 50 against a catalogue of 338 —
+           and this report names a row per SKU, so it was reporting on a
+           seventh of the catalogue and calling it the stock position. */
+        queryFn: () => fetchAll((page) => catalogApi.skus(page)),
         staleTime: 10 * 60 * 1000,
       },
     ],
   })
 
   const stockRows = stock.data ?? []
-  const skuList = skus.data?.results ?? []
+  const skuList = skus.data ?? []
   const ready = Boolean(stock.data && skus.data)
   const rows = ready ? toLedgerRows(stockRows, skuList) : []
 

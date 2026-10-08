@@ -68,7 +68,7 @@ export function CreateProductionOrderScreen() {
 
   const centers = centersQuery.data?.results ?? []
   const warehouses = warehousesQuery.data?.results ?? []
-  const skus = useMemo(() => skusQuery.data?.results ?? [], [skusQuery.data])
+  const skus = useMemo(() => skusQuery.data ?? [], [skusQuery.data])
   const submitting = create.isPending
 
   const [center, setCenter] = useState<number | null>(null)

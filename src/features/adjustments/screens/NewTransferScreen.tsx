@@ -74,7 +74,7 @@ export function NewTransferScreen() {
 
   const sourceStock = useStockOnHand(source)
 
-  const skus = useMemo(() => skusQuery.data?.results ?? [], [skusQuery.data])
+  const skus = useMemo(() => skusQuery.data ?? [], [skusQuery.data])
   const codes = useMemo(
     () => (reasonCodes.data?.results ?? []).filter((code) => code.is_active !== false),
     [reasonCodes.data],

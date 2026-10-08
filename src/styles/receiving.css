@@ -309,6 +309,22 @@
   color: var(--warning-ink);
 }
 
+/* The same shape as `--warning`, for something that is not a problem: a step
+   that has to happen before the next one makes sense. `--info` itself is too
+   light on `--info-bg` to read at caption size, so the text takes the darker
+   end of the same hue, exactly as `--warning-ink` does above. */
+.callout--info {
+  background: var(--info-bg);
+  color: #1e3a8a;
+}
+
+.callout--info svg,
+.callout--warning svg {
+  flex: none;
+  vertical-align: -3px;
+  margin-right: var(--space-2);
+}
+
 .callout h2 {
   margin: 0 0 var(--space-1);
   font-size: var(--text-body);

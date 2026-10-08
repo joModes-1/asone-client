@@ -68,7 +68,7 @@ export function StockHistoryScreen() {
   })
   const skusQuery = useSkuOptions()
 
-  const skus = useMemo(() => skusQuery.data?.results ?? [], [skusQuery.data])
+  const skus = useMemo(() => skusQuery.data ?? [], [skusQuery.data])
   const rows = useMemo(() => history.data?.results ?? [], [history.data])
   const total = history.data?.count ?? 0
 

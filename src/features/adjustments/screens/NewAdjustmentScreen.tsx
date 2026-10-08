@@ -134,7 +134,7 @@ export function NewAdjustmentScreen() {
   const correctCount = useCorrectCount()
   const postTransfer = usePostTransfer()
 
-  const skus = useMemo(() => skusQuery.data?.results ?? [], [skusQuery.data])
+  const skus = useMemo(() => skusQuery.data ?? [], [skusQuery.data])
   const codes = useMemo(() => reasonCodes.data?.results ?? [], [reasonCodes.data])
   const reasonOptions = useMemo(() => codesForKind(codes, kind), [codes, kind])
 
