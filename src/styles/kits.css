@@ -22,12 +22,25 @@
  * Two is also the ceiling, not just the default — a third column takes the
  * width the component chips need to stay on two lines.
  */
+/* Three across.
+ *
+ * Two, when there were six kits and each card could be read like a page.
+ * AsOne's 2027 catalogue has 120, differing by band, gender, residence and
+ * size — so the screen is one somebody scans for the right cohort rather
+ * than reads, and a third column puts half again as many in front of them.
+ *
+ * Two below 1200px and one below 900px: a card carries a wrapping list of
+ * component chips, and at three across on a laptop those wrap to a column. */
 .kit-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
   /* A card that is not in a full row should not stretch to fill it. */
   align-items: start;
+}
+
+@media (max-width: 1200px) {
+  .kit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 900px) {
@@ -62,6 +75,16 @@
   margin: var(--space-1) 0 0;
   font-size: var(--text-caption);
   color: var(--text-muted);
+}
+
+/* The class band, gender, residence and size. Darker than `__meta` above it
+   because for AsOne's 2027 kits this line is what tells two cards apart,
+   where the number and level repeat across six of them. */
+.kit-card__cohort {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
 }
 
 /* A recessed well, so the contents read as part of the kit rather than as
@@ -297,4 +320,14 @@
    the kit's name keeps the space it needs. */
 .kit-hero__figures {
   flex: 0 1 460px;
+}
+
+/* The cohort line under a kit's number on its detail screen. Same role as
+   `.kit-card__cohort` on the list: the one fact that tells this kit apart
+   from the five others cut to the same pattern in other sizes. */
+.kit-hero__cohort {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
 }

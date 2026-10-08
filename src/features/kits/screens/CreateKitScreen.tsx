@@ -33,15 +33,24 @@
 
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { ChevronRight, Lock, Plus, Trash2 } from 'lucide-react'
 import { Alert, Button, LoadingScreen } from '@/components'
 import { toApiError } from '@/api/errors'
-import * as kitsApi from '@/api/kits'
+import {
+  KIT_FIT_GROUPS,
+  KIT_GENDERS,
+  KIT_RESIDENCES,
+  composeKitNumber,
+  fitsKit,
+  priceListFor,
+} from '@/domain/kitCohort'
 import { formatUGX, multiplyMoney, sumLineTotals } from '@/domain/money'
 import { AppShell } from '@/features/shell/components/AppShell'
 import { useSkuOptions } from '@/features/catalog/hooks/useSkuOptions'
-import { useCreateKit } from '../hooks/useKits'
+import { useSizeOptions } from '@/features/inventory/hooks/useSizeOptions'
+import { componentFailure } from '../componentFailure'
 import type { Sku } from '@/api/types'
+import { useCreateKit } from '../hooks/useKits'
 
 interface DraftLine {
   /** Local key: a row is identified by this, never by its SKU, which changes. */
@@ -65,27 +74,59 @@ const LEVELS = [
 export function CreateKitScreen() {
   const navigate = useNavigate()
   const skusQuery = useSkuOptions()
+  const { sizes } = useSizeOptions()
   const createKit = useCreateKit()
 
   const [kitNumber, setKitNumber] = useState('')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [level, setLevel] = useState('PS')
+  const [generalLevel, setGeneralLevel] = useState('PS')
   const [isActive, setIsActive] = useState(true)
+  /*
+    The cohort this kit is cut for. Empty means "not stated", which is a real
+    kit — the demo starter kits name no gender — so these are four optional
+    fields that stand or fall together, exactly as `Kit.clean()` has it.
+  */
+  const [fitGroup, setFitGroup] = useState('')
+  const [gender, setGender] = useState('')
+  const [residence, setResidence] = useState('')
+  const [sizeId, setSizeId] = useState<number | null>(null)
   const [lines, setLines] = useState<DraftLine[]>(() => [blankLine()])
-  const [partial, setPartial] = useState<string | null>(null)
+  /*
+    A refused component, named by its row. Called `refused` and not
+    `partial` any more: there is no partial outcome to report now that the
+    kit and its lines are one request.
+  */
+  const [refused, setRefused] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   const skus = useMemo(() => skusQuery.data?.results ?? [], [skusQuery.data])
 
   /*
-    A kit is for one school level, and a component has to belong on that
-    level's price list — the server refuses a Primary kit holding a
-    High-School-only garment. Filtered here so the picker cannot offer one.
+    A class band decides the price list — Nursery, P1–P4 and P5–P7 are
+    Primary; S1–S4 and S5–S6 are High School. The server derives it on save
+    (`Kit.PRICE_LIST_BY_FIT_GROUP`), so the form shows it rather than asking,
+    and only a kit stating no band is asked which level it is for.
+  */
+  const level = priceListFor(fitGroup) ?? generalLevel
+  const statesCohort = fitGroup !== ''
+  const sizeName = sizes.find((size) => size.id === sizeId)?.name ?? null
+  /* What the server will assign. Null until all four parts are stated. */
+  const composedNumber = composeKitNumber({ fitGroup, gender, residence, sizeName })
+  const cohortIncomplete =
+    statesCohort && (gender === '' || residence === '' || sizeId === null)
+
+  /*
+    What may go into this kit, by the same three rules the server applies —
+    price list, class band and size. Filtered here so the picker cannot
+    offer something that would be refused after the fact; see `fitsKit`.
+
+    It narrows as the cohort is filled in, which is the point: pick Nursery
+    and the Upper Primary sweaters go away.
   */
   const eligible = useMemo(
-    () => skus.filter((sku) => matchesLevel(sku, level)),
-    [skus, level],
+    () => skus.filter((sku) => fitsKit(sku, { level, fitGroup, sizeId })),
+    [skus, level, fitGroup, sizeId],
   )
 
   const chosen = useMemo(
@@ -114,8 +155,15 @@ export function CreateKitScreen() {
     }),
   )
 
+  /*
+    A kit needs a number. A kit stating a cohort gets one composed, so what
+    it needs instead is all four parts — half a cohort composes nothing and
+    the server refuses it.
+  */
+  const numbered = statesCohort ? composedNumber !== null : kitNumber.trim() !== ''
+
   const ready =
-    kitNumber.trim() !== '' &&
+    numbered &&
     name.trim() !== '' &&
     lines.length > 0 &&
     incomplete.length === 0 &&
@@ -128,43 +176,34 @@ export function CreateKitScreen() {
   async function submit() {
     if (!ready) return
     setSaving(true)
-    setPartial(null)
+    setRefused(null)
 
     try {
       const kit = await createKit.mutateAsync({
-        kit_number: kitNumber.trim(),
+        items: lines.map((line) => ({
+          sku: line.sku as number,
+          quantity: line.quantity,
+        })),
         name: name.trim(),
-        school_level: level,
         is_active: isActive,
         ...(description.trim() ? { description: description.trim() } : {}),
+        /*
+          One or the other, never both. A kit stating a cohort has its number
+          and its school level derived from it on the server; sending our own
+          copy of either is a second source of truth for the same fact.
+        */
+        ...(statesCohort
+          ? { fit_group: fitGroup, gender, residence, size: sizeId }
+          : { kit_number: kitNumber.trim(), school_level: level }),
       })
 
-      const failed: string[] = []
-      for (const line of lines) {
-        try {
-          await kitsApi.addKitItem({
-            kit: kit.id,
-            sku: line.sku as number,
-            quantity: line.quantity,
-          })
-        } catch (error) {
-          const sku = skuOf(line.sku)
-          failed.push(`${sku?.number ?? 'a line'} (${toApiError(error).message})`)
-        }
-      }
-
-      if (failed.length > 0) {
-        // The kit exists, so navigating away would hide the half-built
-        // result. Named here, on the screen that made it.
-        setPartial(
-          `${kit.name} was created, but ${failed.length} of ${lines.length} components were refused: ${failed.join('; ')}. Add them on the kit itself.`,
-        )
-        setSaving(false)
-        return
-      }
-
       navigate(`/kits/${kit.id}`)
-    } catch {
+    } catch (error) {
+      // A component the server refuses comes back keyed by its position in
+      // the table, so the row can be named rather than the whole form
+      // flagged. Nothing was written — the kit and its lines are one
+      // transaction — which is the sentence that matters here.
+      setRefused(componentFailure(error, lines, skuOf))
       setSaving(false)
     }
   }
@@ -202,45 +241,179 @@ export function CreateKitScreen() {
             />
           </div>
 
-          <div className="field field--stacked">
-            <label htmlFor="kit-number">Kit Number</label>
-            <input
-              id="kit-number"
-              className="input"
-              value={kitNumber}
-              placeholder="PS-STARTER-01"
-              onChange={(event) => setKitNumber(event.target.value)}
-            />
-            <p className="field__hint">
-              Typed by you, not assigned. Unlike a SKU number this is yours to
-              choose — it only has to be unique.
-            </p>
-          </div>
+          {/*
+            Who the kit is cut for. Four fields rather than four words in the
+            kit's name, because AsOne's 2027 catalogue has 120 kits that
+            differ by exactly these — and a name cannot be filtered on.
 
+            Leaving the band on "Not stated" is a real choice: it makes a
+            general kit, which names its own number and level instead.
+          */}
           <div className="field field--stacked">
-            <label htmlFor="kit-level">Kit Type</label>
+            <label htmlFor="kit-band">Class Band</label>
             <select
-              id="kit-level"
+              id="kit-band"
               className="input"
-              value={level}
+              value={fitGroup}
               onChange={(event) => {
-                setLevel(event.target.value)
-                // The old lines belong to the old level, and the server
-                // refuses a Primary kit holding a High-School garment.
+                const next = event.target.value
+                setFitGroup(next)
+                // Always, not only when the price list moves. The band
+                // itself decides which garments may be in the kit, so a
+                // Nursery shirt chosen before switching to P5–P7 is now a
+                // component the server would refuse.
                 setLines([blankLine()])
               }}
             >
-              {LEVELS.map((entry) => (
+              <option value="">Not stated — a general kit</option>
+              {KIT_FIT_GROUPS.map((entry) => (
                 <option key={entry.value} value={entry.value}>
                   {entry.label}
                 </option>
               ))}
             </select>
             <p className="field__hint">
-              A kit belongs to one level. Changing it clears the components,
-              because a Primary kit cannot hold a High-School garment.
+              {statesCohort
+                ? `Which classes wear it. It puts the kit on the ${
+                    level === 'PS' ? 'Primary School' : 'High School'
+                  } price list.`
+                : 'Which classes wear it. Say nothing and the kit is a general one — name its own number and level below.'}
             </p>
           </div>
+
+          {statesCohort && (
+            <>
+              <div className="field field--stacked">
+                <label htmlFor="kit-gender">Gender</label>
+                <select
+                  id="kit-gender"
+                  className="input"
+                  value={gender}
+                  onChange={(event) => setGender(event.target.value)}
+                >
+                  <option value="">Choose…</option>
+                  {KIT_GENDERS.map((entry) => (
+                    <option key={entry.value} value={entry.value}>
+                      {entry.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field field--stacked">
+                <label htmlFor="kit-residence">Day or Boarder</label>
+                <select
+                  id="kit-residence"
+                  className="input"
+                  value={residence}
+                  onChange={(event) => setResidence(event.target.value)}
+                >
+                  <option value="">Choose…</option>
+                  {KIT_RESIDENCES.map((entry) => (
+                    <option key={entry.value} value={entry.value}>
+                      {entry.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="field__hint">
+                  A boarder's kit carries the casual and dorm wear a day pupil
+                  goes home for, so the two differ by several components.
+                </p>
+              </div>
+
+              <div className="field field--stacked">
+                <label htmlFor="kit-size">Size</label>
+                <select
+                  id="kit-size"
+                  className="input"
+                  value={sizeId ?? ''}
+                  onChange={(event) => {
+                    setSizeId(event.target.value ? Number(event.target.value) : null)
+                    // The size decides which garments may be in the kit, so
+                    // anything already chosen is for the old one.
+                    setLines([blankLine()])
+                  }}
+                >
+                  <option value="">Choose…</option>
+                  {sizes.map((size) => (
+                    <option key={size.id} value={size.id}>
+                      {size.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="field__hint">
+                  One kit per size. The same bundle in XS and in L are two
+                  kits, because they are two sets of garments to make. Only
+                  garments in this size, and one-size items like socks, can
+                  go in it.
+                </p>
+              </div>
+            </>
+          )}
+
+          {/*
+            A kit stating a cohort has its number composed from it, the way a
+            SKU number is composed — nobody types KIT-NUR-B-DAY-XS. A general
+            kit has nothing to compose from, so it is asked for one.
+          */}
+          {statesCohort ? (
+            <div className="field field--stacked">
+              <label htmlFor="kit-number">Kit Number</label>
+              <div className="input input--locked" id="kit-number">
+                <span className="t-numeric">
+                  {composedNumber ?? 'Waiting for the fields above'}
+                </span>
+                <Lock size={14} aria-hidden />
+              </div>
+              <p className="field__hint">
+                Composed by the system from the four fields above — the same
+                number AsOne use in their own 2027 workbook, so a kit here and
+                a kit on their sheet are the same kit.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="field field--stacked">
+                <label htmlFor="kit-number">Kit Number</label>
+                <input
+                  id="kit-number"
+                  className="input"
+                  value={kitNumber}
+                  placeholder="PS-STARTER-01"
+                  onChange={(event) => setKitNumber(event.target.value)}
+                />
+                <p className="field__hint">
+                  Typed by you, because a kit stating no class band has
+                  nothing to compose a number from. It only has to be unique.
+                </p>
+              </div>
+
+              <div className="field field--stacked">
+                <label htmlFor="kit-level">Kit Type</label>
+                <select
+                  id="kit-level"
+                  className="input"
+                  value={generalLevel}
+                  onChange={(event) => {
+                    setGeneralLevel(event.target.value)
+                    // The old lines belong to the old level, and the server
+                    // refuses a Primary kit holding a High-School garment.
+                    setLines([blankLine()])
+                  }}
+                >
+                  {LEVELS.map((entry) => (
+                    <option key={entry.value} value={entry.value}>
+                      {entry.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="field__hint">
+                  A kit belongs to one level. Changing it clears the components,
+                  because a Primary kit cannot hold a High-School garment.
+                </p>
+              </div>
+            </>
+          )}
 
           <div className="field field--stacked">
             <label htmlFor="kit-description">Description</label>
@@ -395,9 +568,11 @@ export function CreateKitScreen() {
         </section>
       </div>
 
-      {partial && <Alert tone="warning">{partial}</Alert>}
+      {/* Error, not warning. Nothing was written and nothing will be until
+          the named row is fixed. */}
+      {refused && <Alert tone="error">{refused}</Alert>}
 
-      {createKit.isError && !partial && (
+      {createKit.isError && !refused && (
         <Alert tone="error">
           <strong>The kit was not created.</strong>{' '}
           {toApiError(createKit.error).message}
@@ -412,11 +587,13 @@ export function CreateKitScreen() {
           <p className="compose__count">
             {name.trim() === ''
               ? 'Give the kit a name.'
-              : kitNumber.trim() === ''
-                ? 'Give the kit a number.'
-                : incomplete.length > 0
-                  ? 'Choose an item for every line.'
-                  : `${totalUnits} items across ${lines.length} line${lines.length === 1 ? '' : 's'}`}
+              : cohortIncomplete
+                ? 'Say the gender, the residence and the size — the kit number is built from them.'
+                : !numbered
+                  ? 'Give the kit a number.'
+                  : incomplete.length > 0
+                    ? 'Choose an item for every line.'
+                    : `${totalUnits} items across ${lines.length} line${lines.length === 1 ? '' : 's'}`}
           </p>
           {totalUnits > 0 && unpriced.length === 0 && (
             <p className="compose__total">
@@ -437,17 +614,4 @@ export function CreateKitScreen() {
       </div>
     </AppShell>
   )
-}
-
-/**
- * Does this SKU belong on a kit for `level`?
- *
- * Mirrors `KitItem.clean()`: a garment marked for both levels fits either
- * kit; one marked for a single level fits only that kit. Caught here so the
- * picker never offers something the server will refuse.
- */
-function matchesLevel(sku: Sku, level: string): boolean {
-  // A garment marked for both levels fits either kit; one marked for a
-  // single level fits only that kit.
-  return sku.garment_school_level === level || sku.garment_school_level === 'BOTH'
 }

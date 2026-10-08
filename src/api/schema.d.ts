@@ -848,6 +848,38 @@ export interface paths {
         patch: operations["catalog_kits_partial_update"];
         trace?: never;
     };
+    "/api/catalog/kits/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import a kit bill of materials
+         * @description Upload a spreadsheet of uniform kits and the components in them.
+         *
+         *     **Import the garment catalogue first.** Components are matched to SKUs that already exist, by number — nothing is created here, so a kit sheet read against an empty catalogue reports every line as an unknown SKU.
+         *
+         *     **One row per component.** Each row repeats its kit's details, which is how the sheet is written; rows are grouped by class band, gender, residence and size, and the repeated details are checked for agreement rather than taken from whichever row came last.
+         *
+         *     Required columns: `fit_group`, `gender`, `residence`, `size`, `component_sku`. Optional: `kit_number`, `kit_name`, `qty` (defaults to 1).
+         *
+         *     **The kit number in the file is checked, not used.** It is composed from the cohort — `KIT-NUR-B-DAY-XS` — and a file disagreeing with what the cohort composes is refused rather than silently renumbered.
+         *
+         *     **For a kit named in the file, the file's components replace what the kit holds** — a line dropped from the sheet is dropped from the kit. Kits not named in the file are untouched.
+         *
+         *     **Nothing is half-imported** and every unreadable row is reported with its line number. Send `dry_run=true` first.
+         */
+        post: operations["catalog_kits_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/catalog/minimum-stock-levels/": {
         parameters: {
             query?: never;
@@ -3680,22 +3712,14 @@ export interface components {
             /** @default  */
             notes: string;
         };
-        /**
-         * @description * `NUR` - Nursery
-         *     * `P14` - Lower Primary (P1–P4)
-         *     * `P57` - Upper Primary (P5–P7)
-         *     * `S14` - O Level (S1–S4)
-         *     * `S56` - A Level (S5–S6)
-         *     * `ALL` - All levels
-         * @enum {string}
-         */
-        FitGroupEnum: "NUR" | "P14" | "P57" | "S14" | "S56" | "ALL";
         Garment: {
             readonly id: number;
             /** @description For example "White Shirt". */
             name: string;
             /** @description Short code used in SKU numbers, for example BTU. Filled in from the name if left blank, and never changed afterwards. */
             code?: string;
+            /** @description What this garment is, e.g. "School Uniform checked shirt for Nursery". */
+            description?: string;
             /**
              * @description Which price list this garment appears on.
              *
@@ -3715,7 +3739,7 @@ export interface components {
              *     * `S56` - A Level (S5–S6)
              *     * `ALL` - All levels
              */
-            fit_group?: components["schemas"]["FitGroupEnum"] | components["schemas"]["BlankEnum"];
+            fit_group?: components["schemas"]["GarmentFitGroupEnum"] | components["schemas"]["BlankEnum"];
             readonly fit_group_display: string;
             colour?: string;
             /** @description Short code used in SKU numbers, for example CHK for Checked. */
@@ -3737,6 +3761,16 @@ export interface components {
             readonly current_price: string | null;
             readonly sku_count: number;
         };
+        /**
+         * @description * `NUR` - Nursery
+         *     * `P14` - Lower Primary (P1–P4)
+         *     * `P57` - Upper Primary (P5–P7)
+         *     * `S14` - O Level (S1–S4)
+         *     * `S56` - A Level (S5–S6)
+         *     * `ALL` - All levels
+         * @enum {string}
+         */
+        GarmentFitGroupEnum: "NUR" | "P14" | "P57" | "S14" | "S56" | "ALL";
         GarmentPrice: {
             readonly id: number;
             garment: number;
@@ -3764,6 +3798,12 @@ export interface components {
          * @enum {string}
          */
         GarmentSchoolLevelEnum: "PS" | "HS" | "BOTH";
+        /**
+         * @description * `B` - Boy
+         *     * `G` - Girl
+         * @enum {string}
+         */
+        GenderEnum: "B" | "G";
         /** @description A group order, reading. */
         GroupOrder: {
             readonly id: number;
@@ -3953,13 +3993,22 @@ export interface components {
         };
         Kit: {
             readonly id: number;
-            kit_number: string;
+            kit_number?: string;
             /** @description For example "PS Starter Kit". */
             name: string;
             /** @description Who this kit is for, in a sentence. Shown to schools choosing one. */
             description?: string;
             school_level?: components["schemas"]["SchoolLevelEnum"] | components["schemas"]["BlankEnum"];
             readonly school_level_display: string;
+            fit_group?: components["schemas"]["KitFitGroupEnum"] | components["schemas"]["BlankEnum"];
+            readonly fit_group_display: string;
+            gender?: components["schemas"]["GenderEnum"] | components["schemas"]["BlankEnum"];
+            readonly gender_display: string;
+            residence?: components["schemas"]["ResidenceEnum"] | components["schemas"]["BlankEnum"];
+            readonly residence_display: string;
+            /** @description The size this kit is built in. One kit per size. */
+            size?: number | null;
+            readonly size_name: string;
             /** @description Inactive kits stay in reports but cannot be ordered. */
             is_active?: boolean;
             /**
@@ -3974,6 +4023,61 @@ export interface components {
              */
             readonly current_price: string | null;
             readonly item_count: number;
+            items?: components["schemas"]["KitComponentInput"][];
+        };
+        /**
+         * @description One component, as it arrives inside a kit being created.
+         *
+         *     Not `KitItemSerializer`: that one takes a `kit`, because it is posted on
+         *     its own to `/catalog/kit-items/`. Here the kit is the thing being made,
+         *     so naming it would be circular.
+         */
+        KitComponentInput: {
+            sku: number;
+            /** @default 1 */
+            quantity: number;
+        };
+        /**
+         * @description * `NUR` - Nursery
+         *     * `P14` - Lower Primary (P1–P4)
+         *     * `P57` - Upper Primary (P5–P7)
+         *     * `S14` - O Level (S1–S4)
+         *     * `S56` - A Level (S5–S6)
+         * @enum {string}
+         */
+        KitFitGroupEnum: "NUR" | "P14" | "P57" | "S14" | "S56";
+        /** @description The upload behind `POST /api/catalog/kits/import/`. */
+        KitImport: {
+            /**
+             * Format: uri
+             * @description The kit bill of materials as .xlsx, .xlsm or .csv.
+             */
+            file: string;
+            /** @description Which worksheet to read. Defaults to the first one. */
+            sheet?: string;
+            /**
+             * @description Check the file and report what would be imported, then roll it back. Nothing is written.
+             * @default false
+             */
+            dry_run: boolean;
+        };
+        /**
+         * @description What a kit import did, or would have done.
+         *
+         *     `components_removed` is reported separately and prominently because it
+         *     is the one thing this import does that the catalogue import never does:
+         *     a component dropped from the file is dropped from the kit. A bill of
+         *     materials is a recipe, so the file is authoritative for the kits it
+         *     names — but somebody should be told how many lines that cost.
+         */
+        KitImportResult: {
+            kits: number;
+            unchanged: number;
+            components: number;
+            components_changed: number;
+            components_removed: number;
+            dry_run: boolean;
+            detail: string;
         };
         /**
          * @description One line of a kit's bill of materials.
@@ -4761,6 +4865,8 @@ export interface components {
             name?: string;
             /** @description Short code used in SKU numbers, for example BTU. Filled in from the name if left blank, and never changed afterwards. */
             code?: string;
+            /** @description What this garment is, e.g. "School Uniform checked shirt for Nursery". */
+            description?: string;
             /**
              * @description Which price list this garment appears on.
              *
@@ -4780,7 +4886,7 @@ export interface components {
              *     * `S56` - A Level (S5–S6)
              *     * `ALL` - All levels
              */
-            fit_group?: components["schemas"]["FitGroupEnum"] | components["schemas"]["BlankEnum"];
+            fit_group?: components["schemas"]["GarmentFitGroupEnum"] | components["schemas"]["BlankEnum"];
             readonly fit_group_display?: string;
             colour?: string;
             /** @description Short code used in SKU numbers, for example CHK for Checked. */
@@ -4868,6 +4974,15 @@ export interface components {
             description?: string;
             school_level?: components["schemas"]["SchoolLevelEnum"] | components["schemas"]["BlankEnum"];
             readonly school_level_display?: string;
+            fit_group?: components["schemas"]["KitFitGroupEnum"] | components["schemas"]["BlankEnum"];
+            readonly fit_group_display?: string;
+            gender?: components["schemas"]["GenderEnum"] | components["schemas"]["BlankEnum"];
+            readonly gender_display?: string;
+            residence?: components["schemas"]["ResidenceEnum"] | components["schemas"]["BlankEnum"];
+            readonly residence_display?: string;
+            /** @description The size this kit is built in. One kit per size. */
+            size?: number | null;
+            readonly size_name?: string;
             /** @description Inactive kits stay in reports but cannot be ordered. */
             is_active?: boolean;
             /**
@@ -4882,6 +4997,7 @@ export interface components {
              */
             readonly current_price?: string | null;
             readonly item_count?: number;
+            items?: components["schemas"]["KitComponentInput"][];
         };
         /**
          * @description One line of a kit's bill of materials.
@@ -5111,10 +5227,13 @@ export interface components {
             garment?: number;
             readonly garment_name?: string;
             readonly garment_school_level?: string;
+            readonly garment_description?: string;
             readonly garment_colour?: string;
             readonly garment_colour_hex?: string;
+            readonly garment_fit_group?: string;
             size?: number;
             readonly size_name?: string;
+            readonly size_is_one_size?: boolean;
             /** @description Filled in from the garment and size if left blank. */
             description?: string;
             /** @description Inactive SKUs stay in reports but cannot be ordered. */
@@ -5569,6 +5688,12 @@ export interface components {
             active_from: string;
         };
         /**
+         * @description * `DAY` - Day
+         *     * `BRD` - Boarder
+         * @enum {string}
+         */
+        ResidenceEnum: "DAY" | "BRD";
+        /**
          * @description One role in the published catalogue.
          *
          *     Not backed by a model — roles are a TextChoices on User, deliberately.
@@ -5909,10 +6034,13 @@ export interface components {
             garment: number;
             readonly garment_name: string;
             readonly garment_school_level: string;
+            readonly garment_description: string;
             readonly garment_colour: string;
             readonly garment_colour_hex: string;
+            readonly garment_fit_group: string;
             size: number;
             readonly size_name: string;
+            readonly size_is_one_size: boolean;
             /** @description Filled in from the garment and size if left blank. */
             description?: string;
             /** @description Inactive SKUs stay in reports but cannot be ordered. */
@@ -7383,16 +7511,41 @@ export interface operations {
     catalog_kits_list: {
         parameters: {
             query?: {
+                /**
+                 * @description The class band this kit is cut for, e.g. P1–P4.
+                 *
+                 *     * `NUR` - Nursery
+                 *     * `P14` - Lower Primary (P1–P4)
+                 *     * `P57` - Upper Primary (P5–P7)
+                 *     * `S14` - O Level (S1–S4)
+                 *     * `S56` - A Level (S5–S6)
+                 */
+                fit_group?: "NUR" | "P14" | "P57" | "S14" | "S56";
+                /**
+                 * @description Who the kit is cut for.
+                 *
+                 *     * `B` - Boy
+                 *     * `G` - Girl
+                 */
+                gender?: "B" | "G";
                 is_active?: boolean;
                 /** @description A page number within the paginated result set. */
                 page?: number;
                 /** @description Number of results to return per page. */
                 page_size?: number;
                 /**
+                 * @description Day pupil or boarder — a boarder's kit carries dorm wear.
+                 *
+                 *     * `DAY` - Day
+                 *     * `BRD` - Boarder
+                 */
+                residence?: "BRD" | "DAY";
+                /**
                  * @description * `PS` - Primary School
                  *     * `HS` - High School
                  */
                 school_level?: "HS" | "PS";
+                size?: number;
             };
             header?: never;
             path?: never;
@@ -7531,6 +7684,36 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Kit"];
                 };
+            };
+        };
+    };
+    catalog_kits_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["KitImport"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KitImportResult"];
+                };
+            };
+            /** @description The file, or some of its rows, could not be read. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -108,6 +108,15 @@ export function ImportGarmentsModal({ open, onClose }: ImportGarmentsModalProps)
       open={open}
       onClose={close}
       title="Import garments"
+      /*
+        Wide, unlike most dialogs here. The others are a stack of
+        fields, where a narrow column keeps a label beside its input.
+        This one's content is a list of rejected rows — "Line 6: there
+        is no SKU called 'UNI-ALL-SOC-OS-GRY'…" — and at 440px each of
+        those wraps to six lines, so a dozen of them scroll off a
+        screen that had room for all of them.
+      */
+      size="lg"
       subtitle="A spreadsheet of garments, their sizes and a price for each."
       footer={
         <>

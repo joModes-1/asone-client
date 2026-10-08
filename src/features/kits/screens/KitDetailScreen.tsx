@@ -32,6 +32,7 @@ import {
   LoadingScreen,
 } from '@/components'
 import { can } from '@/domain/access'
+import { describeCohort } from '@/domain/kitCohort'
 import {
   formatCompactUGX,
   formatQuantity,
@@ -118,6 +119,14 @@ export function KitDetailScreen() {
           <p className="page-head__subtitle">
             {kit.data.kit_number} · issued to {kit.data.school_level_display} students.
           </p>
+          {/*
+            The cohort, where the kit states one. Worth its own line: for
+            AsOne's 2027 kits it is the only thing distinguishing this kit
+            from the five others sharing its name and price list.
+          */}
+          {describeCohort(kit.data) && (
+            <p className="kit-hero__cohort">{describeCohort(kit.data)}</p>
+          )}
         </div>
 
         {/*

@@ -10,15 +10,29 @@
 import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as kitsApi from '@/api/kits'
+import { fetchAll } from '@/api/pageSize'
 import { snackbar } from '@/components'
 import type { KitItem } from '@/api/types'
 
 const KITS_STALE = 5 * 60 * 1000
 
+/**
+ * Every kit, however many pages that takes.
+ *
+ * This asked for `page_size: 100` and used what came back, from a time when
+ * AsOne had six kits. Their 2027 catalogue has **120** — one per class band,
+ * gender, day-or-boarder and size — so twenty were simply absent from the
+ * screen, with nothing saying so. `fetchAll` pages to the end; see
+ * `src/api/pageSize.ts`, where the same thing had already happened to the
+ * inventory table.
+ *
+ * `data` is the rows themselves, not a `Page`. Nothing here wants a page —
+ * the screen tabs and filters the whole set and pages it in the browser.
+ */
 export function useKits() {
   return useQuery({
     queryKey: ['kits'],
-    queryFn: () => kitsApi.kits({ page_size: 100 }),
+    queryFn: () => fetchAll((params) => kitsApi.kits(params)),
     staleTime: KITS_STALE,
   })
 }
@@ -42,13 +56,19 @@ export function useKit(id: number) {
 export function useKitComponents() {
   const query = useQuery({
     queryKey: ['kit-items'],
-    queryFn: () => kitsApi.kitItems(),
+    /*
+      Paged to the end, not left on the server's default of 50. AsOne's 2027
+      kits carry 828 component lines between them, so a single page covered
+      six kits and every card after those said "nothing in this kit yet" —
+      which is not an empty state, it is a wrong one.
+    */
+    queryFn: () => fetchAll((params) => kitsApi.kitItems(undefined, params)),
     staleTime: KITS_STALE,
   })
 
   const byKit = useMemo(() => {
     const map = new Map<number, KitItem[]>()
-    for (const item of query.data?.results ?? []) {
+    for (const item of query.data ?? []) {
       const lines = map.get(item.kit)
       if (lines) lines.push(item)
       else map.set(item.kit, [item])

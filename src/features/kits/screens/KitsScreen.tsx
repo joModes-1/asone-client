@@ -19,7 +19,7 @@
 
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Shirt } from 'lucide-react'
+import { Plus, Shirt, Upload } from 'lucide-react'
 import {
   Alert,
   Badge,
@@ -27,45 +27,80 @@ import {
   EmptyState,
   Pagination,
   SkeletonRows,
-  TabBar,
 } from '@/components'
 import { can } from '@/domain/access'
+import {
+  KIT_FIT_GROUPS,
+  KIT_GENDERS,
+  KIT_RESIDENCES,
+  describeCohort,
+} from '@/domain/kitCohort'
 import { formatUGX } from '@/domain/money'
 import { AppShell } from '@/features/shell/components/AppShell'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { ImportKitsModal } from '../components/ImportKitsModal'
 import { useKitComponents, useKits } from '../hooks/useKits'
 
-type Filter = 'all' | 'PS' | 'HS'
+/*
+  The school level is not filtered on here any more.
+  
+  It was three tabs — All, Primary School, High School — from a time when
+  that was the only thing distinguishing one kit from another. The class
+  band below says it and says more: Nursery, P1–P4 and P5–P7 are the
+  Primary kits, S1–S4 and S5–S6 the High School ones. Two controls for one
+  question, one of them coarser, is a control to remove.
+*/
 
 /**
  * Kits per page.
  *
  * Deliberately not `LIST_PAGE_SIZE`. These are cards, not table rows, and
- * each one carries its kit's whole component list — so four of them is
- * already a screenful where ten rows is not. The grid is two columns, so
- * four is exactly two rows and a page never ends on a half-filled one.
+ * each one carries its kit's whole component list.
+ *
+ * Nine, because the grid is three columns and nine is exactly three rows —
+ * a page never ends on a half-filled one. It was four when the grid was two
+ * columns and AsOne had six kits; at 120 that was thirty pages.
  *
  * Paged here rather than on the server: the level tabs filter the set in
  * this component, and a server page would have the tabs narrowing one page
  * of kits instead of all of them. The set is a handful of rows fetched once
  * and cached hard, which is what makes that affordable.
  */
-const KITS_PER_PAGE = 4
+const KITS_PER_PAGE = 9
+
+/** Every cohort, or one of them. "" is "every", which is what a `<select>` sends. */
+const ANY = ''
 
 export function KitsScreen() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [level, setLevel] = useState<Filter>('all')
+  const [band, setBand] = useState(ANY)
+  const [gender, setGender] = useState(ANY)
+  const [residence, setResidence] = useState(ANY)
   const [page, setPage] = useState(1)
+  const [importing, setImporting] = useState(false)
 
   const kits = useKits()
   const components = useKitComponents()
   const mayEdit = can(user, 'table_updates')
 
+  /*
+    Narrowed here rather than on the server, like the level tabs above and
+    for the same reason: the whole set is fetched once and cached, so a
+    server round trip per dropdown would be slower and would have each
+    filter narrowing one page of kits instead of all of them.
+  */
   const rows = useMemo(() => {
-    const all = kits.data?.results ?? []
-    return level === 'all' ? all : all.filter((kit) => kit.school_level === level)
-  }, [kits.data, level])
+    const all = kits.data ?? []
+    return all.filter(
+      (kit) =>
+        (band === ANY || kit.fit_group === band) &&
+        (gender === ANY || kit.gender === gender) &&
+        (residence === ANY || kit.residence === residence),
+    )
+  }, [kits.data, band, gender, residence])
+
+  const filtered = band !== ANY || gender !== ANY || residence !== ANY
 
   const pageCount = Math.max(Math.ceil(rows.length / KITS_PER_PAGE), 1)
   // Switching tabs can shrink the set under the current page; clamp rather
@@ -85,28 +120,88 @@ export function KitsScreen() {
         </div>
 
         {mayEdit && (
-          <Button onClick={() => navigate('/kits/new')}>
-            <Plus size={16} aria-hidden />
-            Create Kit
-          </Button>
+          <div className="page-head__actions">
+            {/*
+              Secondary, beside Create rather than instead of it. AsOne load
+              their 120 kits from a sheet and build the odd one by hand, so
+              both doors stay open and the one-off keeps the emphasis.
+            */}
+            <Button variant="secondary" onClick={() => setImporting(true)}>
+              <Upload size={16} aria-hidden />
+              Import Kits
+            </Button>
+            <Button onClick={() => navigate('/kits/new')}>
+              <Plus size={16} aria-hidden />
+              Create Kit
+            </Button>
+          </div>
         )}
       </header>
 
-      <TabBar
-        tabs={[
-          { key: 'all', label: 'All Kits' },
-          { key: 'PS', label: 'Primary School' },
-          { key: 'HS', label: 'High School' },
-        ]}
-        active={level}
-        onSelect={(key) => {
-          setLevel(key as Filter)
-          // Back to the first page: staying on page two of a tab that now
-          // has one page shows an empty grid and reads as no kits at all.
-          setPage(1)
-        }}
-        label="School level"
-      />
+      {/*
+        The cohort a kit is cut for. AsOne's 2027 catalogue is 120 kits —
+        five class bands, two genders, day or boarder, six sizes — so a
+        school ordering for a Nursery boy boarder is otherwise looking for
+        six cards among a hundred and twenty.
+      */}
+      <div className="filter-bar filter-bar--inline">
+        <label className="filter-bar__field">
+          <span>Class band:</span>
+          <select
+            aria-label="Class band"
+            value={band}
+            onChange={(event) => {
+              setBand(event.target.value)
+              setPage(1)
+            }}
+          >
+            <option value={ANY}>All</option>
+            {KIT_FIT_GROUPS.map((entry) => (
+              <option key={entry.value} value={entry.value}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="filter-bar__field">
+          <span>Gender:</span>
+          <select
+            aria-label="Gender"
+            value={gender}
+            onChange={(event) => {
+              setGender(event.target.value)
+              setPage(1)
+            }}
+          >
+            <option value={ANY}>All</option>
+            {KIT_GENDERS.map((entry) => (
+              <option key={entry.value} value={entry.value}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="filter-bar__field">
+          <span>Day or boarder:</span>
+          <select
+            aria-label="Day or boarder"
+            value={residence}
+            onChange={(event) => {
+              setResidence(event.target.value)
+              setPage(1)
+            }}
+          >
+            <option value={ANY}>All</option>
+            {KIT_RESIDENCES.map((entry) => (
+              <option key={entry.value} value={entry.value}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       {kits.isError && (
         <Alert tone="error">
@@ -130,8 +225,12 @@ export function KitsScreen() {
         <SkeletonRows rows={4} />
       ) : rows.length === 0 ? (
         <EmptyState
-          title={level === 'all' ? 'No kits yet' : 'No kits for this level'}
-          body="A kit bundles several garments into one line a school can order — a starter kit, say. Central Office builds them."
+          title={filtered ? 'No kits match these filters' : 'No kits yet'}
+          body={
+            filtered
+              ? 'There is no kit for this combination of class band, gender and residence. Widen one of the filters, or build it.'
+              : 'A kit bundles several garments into one line a school can order — a starter kit, say. Central Office builds them.'
+          }
           icon={Shirt}
         />
       ) : (
@@ -148,6 +247,15 @@ export function KitsScreen() {
                       {kit.kit_number} · {kit.school_level_display} ·{' '}
                       {kit.item_count} {kit.item_count === 1 ? 'item' : 'items'}
                     </p>
+                    {/*
+                      The cohort, where one is stated. On a second line and
+                      not folded into the one above, because for AsOne's 2027
+                      kits it is the only thing telling two cards apart —
+                      the same bundle in six sizes.
+                    */}
+                    {describeCohort(kit) && (
+                      <p className="kit-card__cohort">{describeCohort(kit)}</p>
+                    )}
                   </div>
                   <Badge tone={kit.is_active ? 'success' : 'neutral'}>
                     {kit.is_active ? 'ACTIVE' : 'INACTIVE'}
@@ -223,6 +331,8 @@ export function KitsScreen() {
           />
         </div>
       )}
+
+      <ImportKitsModal open={importing} onClose={() => setImporting(false)} />
     </AppShell>
   )
 }

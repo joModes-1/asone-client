@@ -19,20 +19,27 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as catalogApi from '@/api/catalog'
 import * as kitsApi from '@/api/kits'
+import { fetchAll } from '@/api/pageSize'
 import * as ordersApi from '@/api/orders'
 import { snackbar } from '@/components'
 import type { SchoolLevel } from '@/api/types'
 
-/** Kits this school may order: its own level only — a kit is never BOTH. */
+/**
+ * Kits this school may order: its own level only — a kit is never BOTH.
+ *
+ * Paged to the end rather than asking for 200, which is the server's ceiling
+ * and so was one kit short of silently truncating: AsOne's 2027 catalogue
+ * has 120 kits and is the thing that grows every season.
+ */
 export function useOrderableKits(level: SchoolLevel | undefined) {
   const { data, isLoading } = useQuery({
     queryKey: ['kits', 'orderable', level],
-    queryFn: () => kitsApi.kits({ page_size: 200 }),
+    queryFn: () => fetchAll((params) => kitsApi.kits(params)),
     enabled: Boolean(level),
     staleTime: 5 * 60 * 1000,
   })
 
-  const kits = (data?.results ?? []).filter(
+  const kits = (data ?? []).filter(
     (kit) => kit.is_active && kit.school_level === level,
   )
 
