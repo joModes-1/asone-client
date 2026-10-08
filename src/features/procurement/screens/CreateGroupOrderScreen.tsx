@@ -64,7 +64,7 @@ export function CreateGroupOrderScreen() {
   const skusQuery = useOrderableSkus()
   const create = useCreateGroupOrder()
 
-  const skus = useMemo(() => skusQuery.data?.results ?? [], [skusQuery.data])
+  const skus = useMemo(() => skusQuery.data ?? [], [skusQuery.data])
   const submitting = create.isPending
 
   const [orderDate, setOrderDate] = useState(todayISO)
