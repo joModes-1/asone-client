@@ -40,6 +40,7 @@ import { AppShell } from '@/features/shell/components/AppShell'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { ImportKitsModal } from '../components/ImportKitsModal'
 import { useKitComponents, useKits } from '../hooks/useKits'
+import type { KitItem } from '@/api/types'
 
 /*
   The school level is not filtered on here any more.
@@ -70,6 +71,12 @@ const KITS_PER_PAGE = 9
 
 /** Every cohort, or one of them. "" is "every", which is what a `<select>` sends. */
 const ANY = ''
+
+/**
+ * TEMPORARY — whether the Import Kits button is shown. See the comment at
+ * its call site. Flip to `true` to bring it back.
+ */
+const SHOW_IMPORT = false
 
 export function KitsScreen() {
   const { user } = useAuth()
@@ -122,14 +129,21 @@ export function KitsScreen() {
         {mayEdit && (
           <div className="page-head__actions">
             {/*
-              Secondary, beside Create rather than instead of it. AsOne load
-              their 120 kits from a sheet and build the odd one by hand, so
-              both doors stay open and the one-off keeps the emphasis.
+              TEMPORARY: Import Kits is hidden.
+              
+              The endpoint, the importer and this dialogue all work and are
+              covered by tests — it is hidden because AsOne's two sheets
+              disagree about the socks, so the one file anybody would import
+              is refused, and a button that always fails is worse than no
+              button. Put it back by deleting SHOW_IMPORT below and the two
+              places it is read; nothing else needs touching.
             */}
-            <Button variant="secondary" onClick={() => setImporting(true)}>
-              <Upload size={16} aria-hidden />
-              Import Kits
-            </Button>
+            {SHOW_IMPORT && (
+              <Button variant="secondary" onClick={() => setImporting(true)}>
+                <Upload size={16} aria-hidden />
+                Import Kits
+              </Button>
+            )}
             <Button onClick={() => navigate('/kits/new')}>
               <Plus size={16} aria-hidden />
               Create Kit
@@ -144,7 +158,7 @@ export function KitsScreen() {
         school ordering for a Nursery boy boarder is otherwise looking for
         six cards among a hundred and twenty.
       */}
-      <div className="filter-bar filter-bar--inline">
+      <div className="filter-bar">
         <label className="filter-bar__field">
           <span>Class band:</span>
           <select
@@ -274,14 +288,7 @@ export function KitsScreen() {
                       Nothing in this kit yet, so it cannot be priced or ordered.
                     </p>
                   ) : (
-                    <ul className="kit-chips">
-                      {lines.map((line) => (
-                        <li key={line.id} className="kit-chip">
-                          {line.sku_description}
-                          <span className="kit-chip__qty">×{line.quantity}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <KitComponents lines={lines} />
                   )}
                 </div>
 
@@ -332,7 +339,57 @@ export function KitsScreen() {
         </div>
       )}
 
-      <ImportKitsModal open={importing} onClose={() => setImporting(false)} />
+      {SHOW_IMPORT && (
+        <ImportKitsModal open={importing} onClose={() => setImporting(false)} />
+      )}
     </AppShell>
+  )
+}
+
+/** How many components a card shows before it offers the rest. */
+const CHIPS_SHOWN = 3
+
+/**
+ * A kit's components, the first few of them.
+ *
+ * AsOne's kits carry four to ten components — a boarder's more than a day
+ * pupil's, because it holds the casual and dorm wear a day pupil goes home
+ * for. At ten, the chip list was taller than everything else on the card put
+ * together and the three cards in a row were three different heights.
+ *
+ * Its own component because each card remembers whether it is open, and a
+ * `useState` cannot live inside a `map`.
+ */
+function KitComponents({ lines }: { lines: KitItem[] }) {
+  const [expanded, setExpanded] = useState(false)
+  const hidden = lines.length - CHIPS_SHOWN
+  const visible = expanded ? lines : lines.slice(0, CHIPS_SHOWN)
+
+  return (
+    <>
+      <ul className="kit-chips">
+        {visible.map((line) => (
+          <li key={line.id} className="kit-chip">
+            {line.sku_description}
+            <span className="kit-chip__qty">×{line.quantity}</span>
+          </li>
+        ))}
+      </ul>
+
+      {hidden > 0 && (
+        /*
+          A button, not a link: it changes what is on screen rather than
+          going anywhere. Named with the number, so somebody can tell a
+          four-component kit from a ten-component one without opening it.
+        */
+        <button
+          type="button"
+          className="kit-card__more"
+          onClick={() => setExpanded((open) => !open)}
+        >
+          {expanded ? 'Show fewer' : `Show ${hidden} more`}
+        </button>
+      )}
+    </>
   )
 }

@@ -33,7 +33,7 @@
 
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronRight, Lock, Plus, Trash2 } from 'lucide-react'
+import { AlertTriangle, ChevronRight, Info, Lock, Plus, Trash2 } from 'lucide-react'
 import { Alert, Button, LoadingScreen } from '@/components'
 import { toApiError } from '@/api/errors'
 import {
@@ -50,7 +50,7 @@ import { useSkuOptions } from '@/features/catalog/hooks/useSkuOptions'
 import { useSizeOptions } from '@/features/inventory/hooks/useSizeOptions'
 import { componentFailure } from '../componentFailure'
 import type { Sku } from '@/api/types'
-import { useCreateKit } from '../hooks/useKits'
+import { useCreateKit, useKits } from '../hooks/useKits'
 
 interface DraftLine {
   /** Local key: a row is identified by this, never by its SKU, which changes. */
@@ -66,21 +66,15 @@ function blankLine(): DraftLine {
   return { key: nextKey, sku: null, quantity: 1 }
 }
 
-const LEVELS = [
-  { value: 'PS', label: 'Primary School' },
-  { value: 'HS', label: 'High School' },
-]
-
 export function CreateKitScreen() {
   const navigate = useNavigate()
   const skusQuery = useSkuOptions()
   const { sizes } = useSizeOptions()
+  const existing = useKits()
   const createKit = useCreateKit()
 
-  const [kitNumber, setKitNumber] = useState('')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [generalLevel, setGeneralLevel] = useState('PS')
   const [isActive, setIsActive] = useState(true)
   /*
     The cohort this kit is cut for. Empty means "not stated", which is a real
@@ -100,7 +94,7 @@ export function CreateKitScreen() {
   const [refused, setRefused] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const skus = useMemo(() => skusQuery.data?.results ?? [], [skusQuery.data])
+  const skus = useMemo(() => skusQuery.data ?? [], [skusQuery.data])
 
   /*
     A class band decides the price list — Nursery, P1–P4 and P5–P7 are
@@ -108,13 +102,42 @@ export function CreateKitScreen() {
     (`Kit.PRICE_LIST_BY_FIT_GROUP`), so the form shows it rather than asking,
     and only a kit stating no band is asked which level it is for.
   */
-  const level = priceListFor(fitGroup) ?? generalLevel
+  /* Derived from the band, which is required — so there is no fallback. */
+  const level = priceListFor(fitGroup) ?? ''
   const statesCohort = fitGroup !== ''
   const sizeName = sizes.find((size) => size.id === sizeId)?.name ?? null
   /* What the server will assign. Null until all four parts are stated. */
   const composedNumber = composeKitNumber({ fitGroup, gender, residence, sizeName })
+  /*
+    True until all four are stated — including before a band is chosen.
+    It used to begin `statesCohort && …`, which made an untouched form
+    "complete", so the component table appeared on open offering the seven
+    garments that sit on both price lists. Those are the only ones that
+    match a kit with no level yet, and seven arbitrary garments is a worse
+    first impression than a sentence explaining what to do.
+  */
   const cohortIncomplete =
-    statesCohort && (gender === '' || residence === '' || sizeId === null)
+    fitGroup === '' || gender === '' || residence === '' || sizeId === null
+
+  /*
+    The kit this cohort already has, if it has one.
+
+    There is one kit per class band, gender, residence and size, and the
+    server enforces it — but it used to say so only on Create, after
+    somebody had named the kit and chosen its components. Checked here the
+    moment the fourth field is set, against the list this screen already
+    has cached, so the answer costs nothing and arrives before the work.
+  */
+  const clash = useMemo(() => {
+    if (cohortIncomplete) return undefined
+    return (existing.data ?? []).find(
+      (kit) =>
+        kit.fit_group === fitGroup &&
+        kit.gender === gender &&
+        kit.residence === residence &&
+        kit.size === sizeId,
+    )
+  }, [existing.data, cohortIncomplete, fitGroup, gender, residence, sizeId])
 
   /*
     What may go into this kit, by the same three rules the server applies —
@@ -156,14 +179,15 @@ export function CreateKitScreen() {
   )
 
   /*
-    A kit needs a number. A kit stating a cohort gets one composed, so what
-    it needs instead is all four parts — half a cohort composes nothing and
-    the server refuses it.
+    A kit needs a number, and every kit made here has its composed — so
+    what it needs is all four cohort parts. Half a cohort composes nothing
+    and the server refuses it.
   */
-  const numbered = statesCohort ? composedNumber !== null : kitNumber.trim() !== ''
+  const numbered = composedNumber !== null
 
   const ready =
     numbered &&
+    clash === undefined &&
     name.trim() !== '' &&
     lines.length > 0 &&
     incomplete.length === 0 &&
@@ -188,13 +212,14 @@ export function CreateKitScreen() {
         is_active: isActive,
         ...(description.trim() ? { description: description.trim() } : {}),
         /*
-          One or the other, never both. A kit stating a cohort has its number
-          and its school level derived from it on the server; sending our own
-          copy of either is a second source of truth for the same fact.
+          The cohort only. The server derives the number and the school
+          level from it; sending our own copy of either would be a second
+          source of truth for the same fact.
         */
-        ...(statesCohort
-          ? { fit_group: fitGroup, gender, residence, size: sizeId }
-          : { kit_number: kitNumber.trim(), school_level: level }),
+        fit_group: fitGroup,
+        gender,
+        residence,
+        size: sizeId,
       })
 
       navigate(`/kits/${kit.id}`)
@@ -246,8 +271,11 @@ export function CreateKitScreen() {
             kit's name, because AsOne's 2027 catalogue has 120 kits that
             differ by exactly these — and a name cannot be filtered on.
 
-            Leaving the band on "Not stated" is a real choice: it makes a
-            general kit, which names its own number and level instead.
+            Required, and the first thing asked after the name. Everything
+            below depends on it: the price list, the kit number, and above
+            all which garments the component picker offers. Without it the
+            picker has to offer the whole price list — 229 garments, where
+            a stated cohort narrows it to about fourteen.
           */}
           <div className="field field--stacked">
             <label htmlFor="kit-band">Class Band</label>
@@ -265,7 +293,7 @@ export function CreateKitScreen() {
                 setLines([blankLine()])
               }}
             >
-              <option value="">Not stated — a general kit</option>
+              <option value="">Choose…</option>
               {KIT_FIT_GROUPS.map((entry) => (
                 <option key={entry.value} value={entry.value}>
                   {entry.label}
@@ -276,8 +304,8 @@ export function CreateKitScreen() {
               {statesCohort
                 ? `Which classes wear it. It puts the kit on the ${
                     level === 'PS' ? 'Primary School' : 'High School'
-                  } price list.`
-                : 'Which classes wear it. Say nothing and the kit is a general one — name its own number and level below.'}
+                  } price list, and decides which garments can go in it.`
+                : 'Which classes wear it. This decides the price list, the kit number and which garments are offered below.'}
             </p>
           </div>
 
@@ -352,68 +380,49 @@ export function CreateKitScreen() {
           )}
 
           {/*
-            A kit stating a cohort has its number composed from it, the way a
-            SKU number is composed — nobody types KIT-NUR-B-DAY-XS. A general
-            kit has nothing to compose from, so it is asked for one.
+            Composed from the cohort, the way a SKU number is — nobody types
+            KIT-NUR-B-DAY-XS. There is no typed-number path here any more:
+            the class band is required, so every kit made on this screen has
+            a cohort to compose from. The general kits that predate the
+            fields still exist and still edit; they are just not something
+            this form makes.
           */}
-          {statesCohort ? (
-            <div className="field field--stacked">
-              <label htmlFor="kit-number">Kit Number</label>
-              <div className="input input--locked" id="kit-number">
-                <span className="t-numeric">
-                  {composedNumber ?? 'Waiting for the fields above'}
+          <div className="field field--stacked">
+            <label htmlFor="kit-number">Kit Number</label>
+            <div className="input input--locked" id="kit-number">
+              <span className="t-numeric">
+                {composedNumber ?? 'Waiting for the fields above'}
+              </span>
+              <Lock size={14} aria-hidden />
+            </div>
+            {/*
+              Said here, beside the number that collides, and said as soon
+              as the fourth field is set rather than on Create. The link
+              matters: somebody who meant to edit that kit should be able
+              to go straight to it, and somebody who did not now knows
+              which cohort to change.
+            */}
+            {clash ? (
+              <p className="callout callout--warning">
+                <AlertTriangle size={16} aria-hidden />
+                <span>
+                  This cohort already has a kit —{' '}
+                  <Link to={`/kits/${clash.id}`}>
+                    {clash.kit_number} {clash.name}
+                  </Link>
+                  . There is one kit per class band, gender, residence and
+                  size, so change one of the four above, or edit that kit
+                  instead.
                 </span>
-                <Lock size={14} aria-hidden />
-              </div>
+              </p>
+            ) : (
               <p className="field__hint">
                 Composed by the system from the four fields above — the same
                 number AsOne use in their own 2027 workbook, so a kit here and
                 a kit on their sheet are the same kit.
               </p>
-            </div>
-          ) : (
-            <>
-              <div className="field field--stacked">
-                <label htmlFor="kit-number">Kit Number</label>
-                <input
-                  id="kit-number"
-                  className="input"
-                  value={kitNumber}
-                  placeholder="PS-STARTER-01"
-                  onChange={(event) => setKitNumber(event.target.value)}
-                />
-                <p className="field__hint">
-                  Typed by you, because a kit stating no class band has
-                  nothing to compose a number from. It only has to be unique.
-                </p>
-              </div>
-
-              <div className="field field--stacked">
-                <label htmlFor="kit-level">Kit Type</label>
-                <select
-                  id="kit-level"
-                  className="input"
-                  value={generalLevel}
-                  onChange={(event) => {
-                    setGeneralLevel(event.target.value)
-                    // The old lines belong to the old level, and the server
-                    // refuses a Primary kit holding a High-School garment.
-                    setLines([blankLine()])
-                  }}
-                >
-                  {LEVELS.map((entry) => (
-                    <option key={entry.value} value={entry.value}>
-                      {entry.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="field__hint">
-                  A kit belongs to one level. Changing it clears the components,
-                  because a Primary kit cannot hold a High-School garment.
-                </p>
-              </div>
-            </>
-          )}
+            )}
+          </div>
 
           <div className="field field--stacked">
             <label htmlFor="kit-description">Description</label>
@@ -447,11 +456,37 @@ export function CreateKitScreen() {
         <section className="card-panel compose__lines">
           <div className="card-panel__head">
             <h2 className="card-panel__title card-panel__title--accent">Kit Components</h2>
-            <Button size="sm" onClick={() => setLines((prior) => [...prior, blankLine()])}>
-              <Plus size={14} aria-hidden />
-              Add Component
-            </Button>
+            {!cohortIncomplete && (
+              <Button size="sm" onClick={() => setLines((prior) => [...prior, blankLine()])}>
+                <Plus size={14} aria-hidden />
+                Add Component
+              </Button>
+            )}
           </div>
+
+          {/*
+            Nothing to pick from until the cohort is stated, so nothing is
+            offered.
+
+            This is not tidiness. The picker offers the garments that may go
+            in *this* kit, and the cohort is what decides them: with all four
+            set it lists about fourteen, with only a band it lists seventy-
+            nine, and with none at all it listed two hundred and twenty-nine.
+            Showing the table early meant scrolling a list of the whole
+            catalogue to find a garment the kit could actually hold.
+          */}
+          {cohortIncomplete ? (
+            <p className="callout callout--info">
+              <Info size={16} aria-hidden />
+              <span>
+                Choose the class band, gender, day-or-boarder and size first.
+                The garments offered here depend on all four — a Nursery kit
+                in size M can only hold Nursery garments in size M, plus
+                one-size items like socks.
+              </span>
+            </p>
+          ) : (
+          <>
 
           <div className="table-scroll">
             <table className="ledger">
@@ -565,6 +600,8 @@ export function CreateKitScreen() {
             no price of its own and carries no bundle discount, so there is
             nothing to type here.
           </p>
+          </>
+          )}
         </section>
       </div>
 
@@ -585,7 +622,9 @@ export function CreateKitScreen() {
               item" while a row sits on screen waiting for one reads as a bug
               in the form rather than an instruction. */}
           <p className="compose__count">
-            {name.trim() === ''
+            {clash
+              ? `${clash.kit_number} is already the kit for this cohort.`
+              : name.trim() === ''
               ? 'Give the kit a name.'
               : cohortIncomplete
                 ? 'Say the gender, the residence and the size — the kit number is built from them.'

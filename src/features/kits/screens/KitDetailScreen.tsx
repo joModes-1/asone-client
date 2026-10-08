@@ -74,7 +74,7 @@ export function KitDetailScreen() {
   }
 
   const lines = components.byKit.get(id) ?? []
-  const skus = skusQuery.data?.results ?? []
+  const skus = skusQuery.data ?? []
 
   const priced = lines.map((line) => {
     const sku = skus.find((entry) => entry.id === line.sku)

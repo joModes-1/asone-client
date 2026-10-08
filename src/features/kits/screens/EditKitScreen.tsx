@@ -119,7 +119,7 @@ export function EditKitScreen() {
     )
   }
 
-  const skus = useMemo(() => skusQuery.data?.results ?? [], [skusQuery.data])
+  const skus = useMemo(() => skusQuery.data ?? [], [skusQuery.data])
   const level = kit.data?.school_level
 
   /*

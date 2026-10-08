@@ -35,8 +35,15 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
-  /* A card that is not in a full row should not stretch to fill it. */
-  align-items: start;
+  /* Equal heights across a row.
+   *
+   * These used to be `align-items: start`, so each card was as tall as its
+   * own contents and a row of three was three different heights — with the
+   * price and the View Detail button landing at a different place on each.
+   * A kit carries four to ten components, so the variation is large and
+   * every row looked misaligned. The footer is pinned to the bottom with
+   * `margin-top: auto` below, so the extra height goes to the whitespace
+   * rather than stretching the component list. */
 }
 
 @media (max-width: 1200px) {
@@ -51,6 +58,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  /* Fill the grid row, so three cards in a row match. */
+  height: 100%;
   padding: var(--space-5);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -331,3 +340,25 @@
   font-weight: var(--weight-medium);
   color: var(--text-secondary);
 }
+
+/* "Show 4 more" under a kit's component chips.
+ *
+ * Styled as text rather than as a button, because it is a disclosure inside
+ * a card that already carries a real action ("View Detail") — two things
+ * shaped like buttons would compete for the same glance. */
+.kit-card__more {
+  margin-top: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.kit-card__more:hover { color: var(--accent-strong, var(--accent)); }
+.kit-card__more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
