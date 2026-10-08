@@ -46,6 +46,10 @@ export function ReceivingScreen() {
   const [orderId, setOrderId] = useState<number | null>(null)
   const [packingListNumber, setPackingListNumber] = useState('')
   const [carrierName, setCarrierName] = useState('')
+  // Defaults to today, which is right most of the time — but it is now a
+  // field somebody can change, because the first receipts AsOne key in are
+  // for deliveries that arrived before go-live.
+  const [dateReceived, setDateReceived] = useState(todayISO())
   const [notes, setNotes] = useState('')
   /*
    * The finished receipt, and whether posting actually succeeded. Both,
@@ -122,6 +126,7 @@ export function ReceivingScreen() {
     setOrderId(null)
     setPackingListNumber('')
     setCarrierName('')
+    setDateReceived(todayISO())
     setNotes('')
     setDraft({ orderId: null, counts: {}, reasons: {} })
     setStep('order')
@@ -135,7 +140,7 @@ export function ReceivingScreen() {
         production_order: orderId,
         packing_list_number: packingListNumber.trim(),
         carrier_name: carrierName.trim() || undefined,
-        date_received: todayISO(),
+        date_received: dateReceived,
         notes: notes.trim() || undefined,
         lines: expected
           // The server refuses a count of zero, and rightly: "none of this
@@ -205,6 +210,8 @@ export function ReceivingScreen() {
           onPackingListNumberChange={setPackingListNumber}
           carrierName={carrierName}
           onCarrierNameChange={setCarrierName}
+          dateReceived={dateReceived}
+          onDateReceivedChange={setDateReceived}
           expected={expected}
           expectedLoading={outstanding.isFetching}
           onContinue={() => setStep('compare')}

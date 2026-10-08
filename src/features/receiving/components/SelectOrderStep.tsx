@@ -13,6 +13,7 @@
 import { Boxes, PackageOpen } from 'lucide-react'
 import { Button, EmptyState, Panel, SkeletonRows } from '@/components'
 import { formatQuantity } from '@/domain/money'
+import { todayISO } from '@/domain/dates'
 import type { OutstandingRow, ProductionOrder } from '@/api/types'
 
 interface SelectOrderStepProps {
@@ -21,6 +22,8 @@ interface SelectOrderStepProps {
   orderId: number | null
   onOrderChange: (id: number | null) => void
   packingListNumber: string
+  dateReceived: string
+  onDateReceivedChange: (value: string) => void
   onPackingListNumberChange: (value: string) => void
   carrierName: string
   onCarrierNameChange: (value: string) => void
@@ -35,6 +38,8 @@ export function SelectOrderStep({
   orderId,
   onOrderChange,
   packingListNumber,
+  dateReceived,
+  onDateReceivedChange,
   onPackingListNumberChange,
   carrierName,
   onCarrierNameChange,
@@ -44,7 +49,11 @@ export function SelectOrderStep({
 }: SelectOrderStepProps) {
   // The packing list number is the one thing that cannot be reconstructed
   // later: it is handwritten on paper that goes back with the driver.
-  const ready = orderId !== null && packingListNumber.trim().length > 0 && expected.length > 0
+  const ready =
+    orderId !== null &&
+    packingListNumber.trim().length > 0 &&
+    dateReceived !== '' &&
+    expected.length > 0
 
   if (!ordersLoading && orders.length === 0) {
     return (
@@ -94,6 +103,38 @@ export function SelectOrderStep({
           />
           <p className="field__hint">
             Enter the physical list ID sent with the transport vehicle.
+          </p>
+        </div>
+
+        {/*
+          Asked for, not assumed.
+          
+          This was hard-coded to today, so a delivery keyed in on Monday for
+          a van that arrived on Friday was recorded as Monday's. The stock
+          movement takes its date from here, and the ledger is append-only —
+          a wrong date cannot be edited out afterwards, only offset by
+          another entry.
+          
+          It matters most right now: AsOne have 2027 production already in
+          flight with the TCs, so the first receipts keyed in will be for
+          deliveries that happened before go-live.
+          
+          The server refuses a date earlier than the order itself, which is
+          the one direction that cannot be true.
+        */}
+        <div className="field field--stacked">
+          <label htmlFor="receiving-date">Date Received</label>
+          <input
+            id="receiving-date"
+            type="date"
+            className="input"
+            value={dateReceived}
+            max={todayISO()}
+            onChange={(event) => onDateReceivedChange(event.target.value)}
+          />
+          <p className="field__hint">
+            When the van actually arrived, which may not be today. Stock is
+            recorded against this date.
           </p>
         </div>
 

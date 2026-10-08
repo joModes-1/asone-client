@@ -502,3 +502,19 @@ span.line-note { display: block; }
   color: var(--text-primary);
 }
 
+/*
+ * Why a delivery was short, under the receipt that recorded it.
+ *
+ * Indented and quieter than the line above it: the heading says a
+ * discrepancy exists, these say what it was. Somebody opening a
+ * part-received order came to read exactly this.
+ */
+.history__notes {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}

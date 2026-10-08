@@ -243,6 +243,36 @@ export function ProductionOrderDetailScreen() {
                         {receipt.warehouse_name} by {receipt.created_by_name}
                         {receipt.has_discrepancy && ' · discrepancy recorded'}
                       </p>
+
+                      {/*
+                        The reasons, not just the fact that there were some.
+                        
+                        This said "discrepancy recorded" and stopped. Somebody
+                        opening a part-received order to find out *why* had to
+                        go and open each receipt — and why it was short is the
+                        whole question they came with. The note is captured
+                        per line at receiving and was simply never shown here.
+                      */}
+                      {receipt.has_discrepancy && (
+                        <ul className="history__notes">
+                          {(receipt.lines ?? [])
+                            .filter((line) => line.discrepancy_note)
+                            .map((line) => (
+                              <li key={line.id}>
+                                <strong>{line.sku_number}</strong>
+                                {line.quantity_on_packing_list !== null && (
+                                  <>
+                                    {' '}
+                                    — counted {formatQuantity(line.quantity_received)} of{' '}
+                                    {formatQuantity(line.quantity_on_packing_list)} on the
+                                    packing list
+                                  </>
+                                )}
+                                : {line.discrepancy_note}
+                              </li>
+                            ))}
+                        </ul>
+                      )}
                       <p className="history__when">
                         {formatDateTime(receipt.created_at)} · {relativeTime(receipt.created_at)}
                       </p>
