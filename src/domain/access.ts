@@ -118,6 +118,34 @@ export function canReceiveAndShip(user: CurrentUser | null): boolean {
 }
 
 /**
+ * Who may **read** group orders — F16.
+ *
+ * Leads and Finance. Not a matrix column: the server states it as
+ * `MasterDataAccess` for writes plus `read_roles = (Role.FINANCE,)` on
+ * `GroupOrderViewSet`, which is a wider read audience than any single column
+ * describes.
+ *
+ * Expressing it as `table_updates` — the obvious shortcut, since that is who
+ * may *write* one — hid the screen from Finance entirely, even though the API
+ * answers them. Finance reads the costed report on group orders, so they have
+ * every reason to open the document behind it.
+ *
+ * Writing stays {@link canRaiseProductionOrder}: the same Table Updates
+ * column, leads only, which is why the Create and Cancel controls are gated
+ * separately from the screen itself.
+ *
+ * Mirrors `procurement/views.py::GroupOrderViewSet`.
+ */
+export function canReadGroupOrders(user: CurrentUser | null): boolean {
+  if (!user) return false
+  return (
+    user.role === 'FINANCE' ||
+    user.role === 'PROGRAM_LEAD' ||
+    user.role === 'OPERATIONS_MANAGER'
+  )
+}
+
+/**
  * Who may raise a production order on a Tailoring Center — F17.
  *
  * The **Table Updates** column, which AsOne gives to the two leads alone.

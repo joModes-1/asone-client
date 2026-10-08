@@ -51,6 +51,10 @@ import { NewAdjustmentScreen } from '@/features/adjustments/screens/NewAdjustmen
 import { NewTransferScreen } from '@/features/adjustments/screens/NewTransferScreen'
 import { TransfersScreen } from '@/features/adjustments/screens/TransfersScreen'
 import { BackordersScreen } from '@/features/backorders/screens/BackordersScreen'
+import { canReadGroupOrders } from '@/domain/access'
+import { GroupOrdersScreen } from '@/features/procurement/screens/GroupOrdersScreen'
+import { CreateGroupOrderScreen } from '@/features/procurement/screens/CreateGroupOrderScreen'
+import { GroupOrderDetailScreen } from '@/features/procurement/screens/GroupOrderDetailScreen'
 import { ProductionOrdersScreen } from '@/features/production/screens/ProductionOrdersScreen'
 import { ReceivingScreen } from '@/features/receiving/screens/ReceivingScreen'
 import { ShipmentDetailScreen } from '@/features/shipments/screens/ShipmentDetailScreen'
@@ -90,6 +94,7 @@ const SCREENS: Record<string, ComponentType> = {
   '/warehouses': WarehousesScreen,
   '/tailoring-centers': TailoringCentersScreen,
   '/receiving': ReceivingScreen,
+  '/group-orders': GroupOrdersScreen,
   '/production-orders': ProductionOrdersScreen,
   '/backorders': BackordersScreen,
   '/users': UsersRolesScreen,
@@ -271,6 +276,34 @@ export function AppRoutes() {
               <RequireAuth>
                 <RequireAccess requires="inventory_adjustments">
                   <NewAdjustmentScreen />
+                </RequireAccess>
+              </RequireAuth>
+            }
+          />
+
+          {/*
+            Two audiences, deliberately. Creating is `table_updates` — leads
+            only, matching MasterDataAccess on the server. Reading a group
+            order is wider: Finance may open one, because the costed report
+            they read is built on these documents.
+          */}
+          <Route
+            path="/group-orders/new"
+            element={
+              <RequireAuth>
+                <RequireAccess requires="table_updates">
+                  <CreateGroupOrderScreen />
+                </RequireAccess>
+              </RequireAuth>
+            }
+          />
+
+          <Route
+            path="/group-orders/:groupOrderId"
+            element={
+              <RequireAuth>
+                <RequireAccess requires={canReadGroupOrders}>
+                  <GroupOrderDetailScreen />
                 </RequireAccess>
               </RequireAuth>
             }

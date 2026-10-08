@@ -22,13 +22,98 @@
 
 import { get, patch, post } from './http'
 import type {
+  GroupOrder,
   GroupOrderCosted,
+  ReconciliationRow,
   ReceiptsByTailoringCenter,
   OutstandingRow,
   Page,
   ProductionOrder,
   Receipt,
 } from './types'
+
+// ---------------------------------------------------------------------------
+// Group orders
+//
+// The consolidated seasonal requirement across all three Tailoring Centers —
+// AsOne's p.2: "used to initially fund the TCs". Production orders are the
+// breakdown of it, which is why the interesting endpoint here is not the list
+// but `groupOrderReconciliation`.
+// ---------------------------------------------------------------------------
+
+export function groupOrders(params?: {
+  status?: string
+  order_date?: string
+  page?: number
+  page_size?: number
+}) {
+  return get<Page<GroupOrder>>('/procurement/group-orders/', params ?? undefined)
+}
+
+export function groupOrder(id: number) {
+  return get<GroupOrder>(`/procurement/group-orders/${id}/`)
+}
+
+export interface GroupOrderLineInput {
+  sku: number
+  quantity: number
+}
+
+export interface GroupOrderInput {
+  order_date: string
+  due_in_warehouse_date?: string | null
+  notes?: string
+  lines: GroupOrderLineInput[]
+}
+
+/**
+ * Raise a group order — header and lines in one request, one transaction.
+ *
+ * **No `unit_price`**, unlike a production order. A production order records
+ * what was *negotiated* with a centre, so a typed price is kept; a group
+ * order is the requirement, priced from the list in force on `order_date`.
+ * There is nothing to negotiate with yet — the centres have not been asked.
+ *
+ * A garment with no price covering that date refuses the whole request, and
+ * the message names the garment. Surface it as-is: "could not create" tells
+ * the reader nothing they can act on.
+ */
+export function createGroupOrder(body: GroupOrderInput) {
+  return post<GroupOrder>('/procurement/group-orders/', body)
+}
+
+export interface GroupOrderAmendment {
+  status?: 'OPEN' | 'CLOSED' | 'CANCELLED'
+  due_in_warehouse_date?: string | null
+  notes?: string
+}
+
+export function amendGroupOrder(id: number, body: GroupOrderAmendment) {
+  return patch<GroupOrder>(`/procurement/group-orders/${id}/`, body)
+}
+
+/**
+ * Requested against ordered, per SKU — the control AsOne asked for.
+ *
+ * Their spec says production orders "should initially sum up to the Group
+ * Order". This is that sum: `requested` from the group order, `ordered`
+ * across every production order breaking it down, and the difference.
+ *
+ * **Negative means the centres have been asked for less than the
+ * requirement** — the case worth chasing. Cancelled production orders are
+ * excluded server-side, so a withdrawn order does not quietly flatter the
+ * comparison.
+ *
+ * **A bare array, not a page.** The generated schema says
+ * `PaginatedReconciliationRowList` and that is wrong: the action returns
+ * `Response(serializer(rows, many=True).data)` with no paginator, which is
+ * right for a comparison table that has to be read whole. Typed from the
+ * live response rather than from `schema.d.ts` — reading `.results` off it
+ * yields `undefined`, and the screen renders an empty table with no error.
+ */
+export function groupOrderReconciliation(id: number) {
+  return get<ReconciliationRow[]>(`/procurement/group-orders/${id}/reconciliation/`)
+}
 
 /**
  * Production orders still awaiting delivery, for this user's warehouse.

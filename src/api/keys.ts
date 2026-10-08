@@ -31,6 +31,15 @@ export const keys = {
   schoolOrdersForSchool: (schoolId: number, page: number) =>
     ['orders', 'by-school', schoolId, page] as const,
   receipts: () => ['receipts'] as const,
+
+  // Group orders — the seasonal requirement, and the reconciliation that
+  // compares it against the production orders breaking it down. The
+  // reconciliation is keyed separately from the order because it changes when
+  // a *production* order changes, not when the group order does.
+  groupOrders: (status: string | null, page: number) =>
+    ['group-orders', 'list', status, page] as const,
+  groupOrder: (id: number) => ['group-orders', 'detail', id] as const,
+  groupOrderReconciliation: (id: number) => ['group-orders', 'reconciliation', id] as const,
   warehouses: () => ['warehouses'] as const,
 
   // Schools — master data, so the list is invalidated as a whole on any

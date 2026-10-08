@@ -225,7 +225,7 @@ export function ProcurementCostScreen() {
                     <th>Raised</th>
                     <th>Due</th>
                     <th>Status</th>
-                    <th className="ledger__num">Lines</th>
+                    <th className="ledger__num">SKUs</th>
                     <th className="ledger__num">Units</th>
                     <th className="ledger__num">Value</th>
                   </tr>

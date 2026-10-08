@@ -48,6 +48,7 @@ describe('the phase gate', () => {
     for (const closed of [
       '/receiving',
       '/production-orders',
+      '/group-orders',
       '/stock-history',
       '/reports/procurement-costs',
       '/adjustments',

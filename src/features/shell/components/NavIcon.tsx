@@ -16,6 +16,7 @@ import {
   Clock,
   Coins,
   FileBarChart,
+  FileStack,
   History,
   LayoutDashboard,
   Package,
@@ -46,6 +47,7 @@ import sewingMachineUrl from '@/assets/icons/sewing-machine.svg'
 const GLYPHS: Record<string, LucideIcon> = {
   LayoutDashboard,
   FileBarChart,
+  FileStack,
   Package,
   PackageOpen,
   Truck,

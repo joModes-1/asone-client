@@ -85,6 +85,7 @@ const OPENS_IN: Readonly<Record<string, number>> = {
   // moved, so the ledger is an empty screen inviting "is this broken?".
   '/receiving': 1,
   '/production-orders': 1,
+  '/group-orders': 1,
   '/stock-history': 1,
   '/adjustments': 1,
 

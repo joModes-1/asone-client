@@ -40,6 +40,19 @@
   color: var(--text-muted);
 }
 
+/*
+ * A search that does not stretch.
+ *
+ * The base rule is `flex: 1 1 240px`, which is right on Production Orders —
+ * three dropdowns sit beside it and hold it back. Group Orders has one, so
+ * the box grew to most of the bar: a search for an eleven-character order
+ * number given room for sixty, and a Status control pushed to the far edge
+ * away from everything it filters.
+ */
+.filter-bar__search--compact {
+  flex: 0 1 260px;
+}
+
 .filter-bar__search input {
   flex: 1;
   min-width: 0;
@@ -112,6 +125,21 @@
 }
 
 .ledger--production { min-width: 940px; }
+
+/*
+ * Group orders: a right-aligned money column immediately followed by a
+ * status badge.
+ *
+ * `Total Value` ends hard against its right edge and `Status` starts hard
+ * against its left, so UGX 42,780,000 and the badge collided into one
+ * run of ink with no boundary between them. The gap is put on the status
+ * column rather than the value, so the figures stay in their own aligned
+ * column and only the badge moves.
+ */
+.ledger--group-orders th:last-child,
+.ledger--group-orders td:last-child {
+  padding-left: var(--space-5);
+}
 
 /* 03 / Detail head -------------------------------------------------------- */
 

@@ -27,6 +27,7 @@
 import {
   can,
   canMoveStockBetweenWarehouses,
+  canReadGroupOrders,
   canReadKits,
   canReadSchoolOrders,
   canReadStockHistory,
@@ -70,6 +71,46 @@ export const NAVIGATION: readonly NavGroup[] = [
     label: 'Operations',
     items: [
       /*
+       * The inbound chain, kept together and in the order the work happens:
+       * the season's requirement is raised, broken into orders on the
+       * centres, and received against. Group Orders is the parent document —
+       * production orders sum up to it, which is the comparison on its
+       * detail screen.
+       *
+       * They were scattered through this group, with Receiving two entries
+       * above the orders it receives against, so the rail gave no hint that
+       * the three are one sequence.
+       *
+       * Group Orders takes `canReadGroupOrders`, not a column: the server
+       * guards writes with MasterDataAccess and opens reads to Finance as
+       * well, which is wider than any single column describes. `table_updates`
+       * was the obvious shortcut and hid the screen from Finance, who read
+       * the costed report built on these orders.
+       */
+      {
+        label: 'Group Orders',
+        path: '/group-orders',
+        requires: canReadGroupOrders,
+        icon: 'FileStack',
+      },
+      {
+        label: 'Production Orders',
+        path: '/production-orders',
+        requires: 'production_orders',
+        icon: 'Receipt',
+      },
+      {
+        label: 'Receiving',
+        path: '/receiving',
+        requires: 'warehouse_receiving_and_shipping',
+        icon: 'PackageOpen',
+      },
+      /*
+       * Outbound starts here: what the schools asked for, then what left on
+       * a van. Below Receiving rather than above Group Orders, so the group
+       * reads inbound first — requirement, orders on the centres, goods in —
+       * and then outbound, instead of opening midway through the cycle.
+       *
        * Mirrors the server, which is wider than the matrix column here:
        * writing an order is School Staff only, but reading the list is
        * School Staff plus Finance — see canReadSchoolOrders. Gating on
@@ -82,22 +123,10 @@ export const NAVIGATION: readonly NavGroup[] = [
        */
       { label: 'Orders', path: '/orders', requires: canReadSchoolOrders, icon: 'Package' },
       {
-        label: 'Receiving',
-        path: '/receiving',
-        requires: 'warehouse_receiving_and_shipping',
-        icon: 'PackageOpen',
-      },
-      {
         label: 'Shipments',
         path: '/shipments',
         requires: 'warehouse_receiving_and_shipping',
         icon: 'Truck',
-      },
-      {
-        label: 'Production Orders',
-        path: '/production-orders',
-        requires: 'production_orders',
-        icon: 'Receipt',
       },
       // Finance only — the matrix reserves posting adjustments to them, and
       // the server refuses everybody else.

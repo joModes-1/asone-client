@@ -71,6 +71,27 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
     ],
   },
   {
+    path: '/group-orders',
+    title: 'Group orders',
+    points: [
+      'A group order is the season\u2019s whole requirement across all three Tailoring Centers \u2014 AsOne\u2019s own words: the consolidated total, used to initially fund them. One document per season, not one per site.',
+      'Production orders break it down: each warehouse ordering its share from a centre. AsOne\u2019s spec says they should initially sum up to the group order, and the Requirement vs Ordered table on each one is that comparison.',
+      'A negative difference means the centres have been asked for less than the requirement. It is reported, never blocked \u2014 a warehouse ordering a little extra for safety stock is a judgement call, and refusing it would refuse the decision too.',
+      'Every line is priced from the list in force on the order date, and fixed there. Unlike a production order there is no negotiated price, because the centres have not been asked yet \u2014 so a garment with no price on that date refuses the whole order rather than costing it at zero.',
+      'Only the leads raise or cancel one. Finance reads it; the warehouse and schools never see it. Cancelling is a status change, never a delete \u2014 the document is what funded the centres.',
+    ],
+  },
+  {
+    path: '/group-orders/new',
+    title: 'Creating a group order',
+    points: [
+      'Record the season\u2019s total requirement here, before the Tailoring Centers are asked for their share of it.',
+      'There is no price column. The server prices every line from the list in force on the order date, so a garment with no price on that date has to be priced first \u2014 on Inventory \u2192 Garments. The form names which ones.',
+      'A garment may appear once. Chosen ones drop out of the picker rather than being caught when you submit.',
+      'A line with no garment chosen blocks the order rather than being quietly dropped. Posting forty of forty-one lines and reporting success would surface months later as a production order nobody can reconcile.',
+    ],
+  },
+  {
     path: '/production-orders',
     title: 'Production orders',
     points: [
