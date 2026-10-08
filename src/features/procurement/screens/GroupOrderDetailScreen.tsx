@@ -28,8 +28,9 @@
 
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Ban, ChevronRight, TriangleAlert } from 'lucide-react'
+import { Ban, ChevronRight, Info, TriangleAlert } from 'lucide-react'
 import {
+  Alert,
   Badge,
   ConfirmButton,
   LoadingScreen,
@@ -44,6 +45,7 @@ import { AppShell } from '@/features/shell/components/AppShell'
 import {
   useAmendGroupOrder,
   useGroupOrder,
+  useGroupOrderProductionOrders,
   useGroupOrderReconciliation,
 } from '../hooks/useGroupOrders'
 
@@ -79,6 +81,7 @@ export function GroupOrderDetailScreen() {
 
   const orderQuery = useGroupOrder(id)
   const reconciliation = useGroupOrderReconciliation(id)
+  const raised = useGroupOrderProductionOrders(id)
   const amend = useAmendGroupOrder(id)
 
   const order = orderQuery.data
@@ -89,6 +92,17 @@ export function GroupOrderDetailScreen() {
    * surface — see the note at the top of this file.
    */
   const short = rows.filter((row) => row.difference < 0)
+  /*
+    Garments ordered against this group order that were never on it.
+
+    They belong in the table — somebody should know the Tailoring Centers
+    were asked for something outside the requirement — but they do not
+    belong in it *silently*. A row reading `requested 0, ordered 50` sits
+    under the group order's own heading and reads as though the garment had
+    been added to the order, which is the one thing that has not happened:
+    the group order's lines are below and unchanged.
+  */
+  const unrequested = rows.filter((row) => row.requested === 0 && row.ordered > 0)
 
   // Clamped rather than stored: a row count that shrinks under a reader
   // sitting on page 4 would otherwise strand them on an empty table.
@@ -201,6 +215,23 @@ export function GroupOrderDetailScreen() {
         </p>
       )}
 
+      {!reconciliation.isLoading && unrequested.length > 0 && (
+        <p className="callout callout--info">
+          <Info size={16} aria-hidden />
+          <span>
+            <strong>
+              {unrequested.length === 1
+                ? 'One garment was ordered that is not on this requirement'
+                : `${unrequested.length} garments were ordered that are not on this requirement`}
+            </strong>{' '}
+            — a production order against this group order asked for something
+            it does not list. Nothing has been added to the group order: its
+            own lines are unchanged, below. Shown here so the extra is
+            visible rather than lost between two documents.
+          </span>
+        </p>
+      )}
+
       {/*
         Stacked full width, not `detail-columns` like the production order
         detail beside it. That grid pins its right column at 420px, which
@@ -247,7 +278,14 @@ export function GroupOrderDetailScreen() {
                   {visibleRows.map((row) => (
                     <tr key={row.sku_number}>
                       <td className="ledger__code">{row.sku_number}</td>
-                      <td className="ledger__wrap">{row.sku_description}</td>
+                      <td className="ledger__wrap">
+                        {row.sku_description}
+                        {/* Said on the row, not only in the banner above:
+                            the banner counts them, this says which. */}
+                        {row.requested === 0 && row.ordered > 0 && (
+                          <span className="ledger__tag">Not on this requirement</span>
+                        )}
+                      </td>
                       <td className="ledger__num">{formatQuantity(row.requested)}</td>
                       <td className="ledger__num">{formatQuantity(row.ordered)}</td>
                       {/* The shortfall is the reason to read this table, so
@@ -288,6 +326,9 @@ export function GroupOrderDetailScreen() {
           <p className="field__hint">
             Requested is what this order asks for. Ordered is the total across
             every production order raised against it, cancelled ones excluded.
+            This is a comparison of the two, not the order itself — the group
+            order's own lines are in the table below, and nothing here
+            changes them.
           </p>
       </section>
 
@@ -341,6 +382,77 @@ export function GroupOrderDetailScreen() {
             recalculated, so this total still matches what the centres were
             funded against.
           </p>
+      </section>
+
+      {/*
+        The orders this one fanned out into.
+
+        The screen reported the totals — requested, ordered, short — and
+        never said which production orders made them up, so somebody who
+        raised one against this group order had nowhere to see it from here.
+        The link is the whole point of the document and it was invisible.
+      */}
+      <section className="card-panel">
+        <h2 className="card-panel__title card-panel__title--accent">
+          Production Orders Raised
+        </h2>
+
+        {raised.isLoading ? (
+          <SkeletonRows rows={3} />
+        ) : raised.isError ? (
+          <Alert tone="warning">
+            The production orders raised against this could not be loaded, so
+            the Ordered column above is the only record of them on this screen.
+          </Alert>
+        ) : (raised.data ?? []).length === 0 ? (
+          <p className="panel__clear">
+            Nothing has been ordered from the Tailoring Centers against this
+            requirement yet. A production order names its group order when it
+            is raised — if one was raised without that, it will not appear
+            here or count towards the figures above.
+          </p>
+        ) : (
+          <div className="table-scroll">
+            <table className="ledger">
+              <thead>
+                <tr>
+                  <th>Number</th>
+                  <th>Tailoring Center</th>
+                  <th>Destination</th>
+                  <th>Order Date</th>
+                  <th className="ledger__num">SKUs</th>
+                  <th className="ledger__num">Total Qty</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(raised.data ?? []).map((order) => (
+                  <tr key={order.id}>
+                    <td className="ledger__code">
+                      <Link to={`/production-orders/${order.id}`}>{order.number}</Link>
+                    </td>
+                    <td>{order.tailoring_center_name}</td>
+                    <td>{order.warehouse_name}</td>
+                    <td className="ledger__nowrap">{formatDate(order.order_date)}</td>
+                    <td className="ledger__num">{order.line_count}</td>
+                    <td className="ledger__num">{formatQuantity(order.total_quantity)}</td>
+                    <td>
+                      <Badge tone={fulfilmentTone(order.status ?? 'OPEN')}>
+                        {order.status_display}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <p className="field__hint">
+          Cancelled orders are listed but do not count towards the Ordered
+          figures above — they were withdrawn, so counting them would show the
+          requirement as covered by goods nobody is making.
+        </p>
       </section>
     </AppShell>
   )

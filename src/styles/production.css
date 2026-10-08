@@ -564,3 +564,21 @@ span.line-note { display: block; }
   padding: var(--space-1) var(--space-2);
   font-size: var(--text-caption);
 }
+
+/* "Not on this requirement", beside a description in a comparison table.
+ *
+ * A quiet tag rather than a badge: the row is informative, not wrong, and a
+ * coloured pill would read as an error beside a shortfall that genuinely
+ * is one. */
+.ledger__tag {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 1px var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+  white-space: nowrap;
+}

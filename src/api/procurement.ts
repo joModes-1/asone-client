@@ -148,6 +148,8 @@ export function productionOrders(params?: {
   status?: string
   tailoring_center?: number
   warehouse?: number
+  /** The group order these break down — for a group order's own screen. */
+  group_order?: number
   page?: number
   page_size?: number
 }) {

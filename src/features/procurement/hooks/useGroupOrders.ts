@@ -75,6 +75,26 @@ export function useGroupOrder(id: number) {
 }
 
 /**
+ * The production orders raised against one group order.
+ *
+ * The group order screen reported the *totals* — requested, ordered, short —
+ * and never said which orders made them up. So somebody who raised a
+ * production order against a group order had nowhere to see it from the
+ * group order, and the relationship the whole document depends on was
+ * invisible.
+ *
+ * Unpaginated: a group order fans out to one production order per Tailoring
+ * Center, and there are three of those.
+ */
+export function useGroupOrderProductionOrders(id: number) {
+  return useQuery({
+    queryKey: ['production-orders', 'for-group-order', id],
+    queryFn: () => fetchAll((page) => procurement.productionOrders({ group_order: id, ...page })),
+    enabled: Number.isFinite(id) && id > 0,
+  })
+}
+
+/**
  * Requested against ordered, per SKU.
  *
  * The point of the detail screen. Fetched as its own query rather than folded
