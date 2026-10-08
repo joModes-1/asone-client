@@ -29,7 +29,7 @@ import * as procurement from '@/api/procurement'
 import { keys } from '@/api/keys'
 import { snackbar } from '@/components'
 import { toApiError } from '@/api/errors'
-import { LIST_PAGE_SIZE } from '@/api/pageSize'
+import { LIST_PAGE_SIZE, fetchAll } from '@/api/pageSize'
 import { useSkuOptions } from '@/features/catalog/hooks/useSkuOptions'
 
 export const GROUP_ORDER_PAGE_SIZE = LIST_PAGE_SIZE
@@ -45,6 +45,24 @@ export function useGroupOrders(page: number, status: string | null) {
       }),
     // Paging should not blank the table it is paging.
     placeholderData: keepPreviousData,
+  })
+}
+
+/**
+ * The group orders a production order can be raised against — the open ones.
+ *
+ * Fetched whole rather than paged: it feeds a picker, and AsOne raise a
+ * handful of these a season. Closed and cancelled ones are left out because
+ * a production order placed against a closed requirement is almost always a
+ * mistake, and the ones still open are the short list somebody is choosing
+ * from.
+ */
+export function useOpenGroupOrders(enabled = true) {
+  return useQuery({
+    queryKey: ['group-orders', 'open'],
+    queryFn: () => fetchAll((page) => procurement.groupOrders({ status: 'OPEN', ...page })),
+    staleTime: 5 * 60 * 1000,
+    enabled,
   })
 }
 

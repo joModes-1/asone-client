@@ -5073,6 +5073,32 @@ export interface components {
             notes?: string;
         };
         /**
+         * @description `OrderAmendSerializer`, plus the group order link.
+         *
+         *     Attaching after the fact matters more than it looks. The link is what
+         *     makes a group order mean anything — `reconcile()` counts the production
+         *     orders pointing at it — and a production order raised without one leaves
+         *     the requirement reading as wholly unmet. The create form did not ask for
+         *     it for a while, so there are real orders out there that need attaching,
+         *     and the alternative was cancelling a document that funds a Tailoring
+         *     Center and raising it again.
+         *
+         *     Nullable, so a wrong link can be undone. Nothing downstream depends on
+         *     it: receipts point at the production order, not at the group order, so
+         *     moving the link moves a report and nothing else.
+         *
+         *     Not on `OrderAmendSerializer` itself, because that one also serves group
+         *     orders, and a group order has no group order.
+         */
+        PatchedProductionOrderAmend: {
+            status?: components["schemas"]["ProcurementOrderStatusEnum"];
+            /** Format: date */
+            due_in_warehouse_date?: string | null;
+            notes?: string;
+            /** @description The group order this breaks down. Null detaches it. */
+            group_order?: number | null;
+        };
+        /**
          * @description An inventory adjustment reason code — F13.
          *
          *     Writable, unlike everything else in this app. The ledger is written by
@@ -5441,6 +5467,32 @@ export interface components {
             readonly quantity_received: number;
             readonly fulfilment_status: string;
             readonly fulfilment_status_display: string;
+        };
+        /**
+         * @description `OrderAmendSerializer`, plus the group order link.
+         *
+         *     Attaching after the fact matters more than it looks. The link is what
+         *     makes a group order mean anything — `reconcile()` counts the production
+         *     orders pointing at it — and a production order raised without one leaves
+         *     the requirement reading as wholly unmet. The create form did not ask for
+         *     it for a while, so there are real orders out there that need attaching,
+         *     and the alternative was cancelling a document that funds a Tailoring
+         *     Center and raising it again.
+         *
+         *     Nullable, so a wrong link can be undone. Nothing downstream depends on
+         *     it: receipts point at the production order, not at the group order, so
+         *     moving the link moves a report and nothing else.
+         *
+         *     Not on `OrderAmendSerializer` itself, because that one also serves group
+         *     orders, and a group order has no group order.
+         */
+        ProductionOrderAmend: {
+            status?: components["schemas"]["ProcurementOrderStatusEnum"];
+            /** Format: date */
+            due_in_warehouse_date?: string | null;
+            notes?: string;
+            /** @description The group order this breaks down. Null detaches it. */
+            group_order?: number | null;
         };
         /**
          * @description A line, reading. Includes the SKU's details so a client can render the
@@ -10952,9 +11004,9 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["PatchedOrderAmend"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedOrderAmend"];
-                "multipart/form-data": components["schemas"]["PatchedOrderAmend"];
+                "application/json": components["schemas"]["PatchedProductionOrderAmend"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedProductionOrderAmend"];
+                "multipart/form-data": components["schemas"]["PatchedProductionOrderAmend"];
             };
         };
         responses: {
@@ -10963,7 +11015,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OrderAmend"];
+                    "application/json": components["schemas"]["ProductionOrderAmend"];
                 };
             };
         };

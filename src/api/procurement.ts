@@ -207,6 +207,15 @@ export interface ProductionOrderAmendment {
   status?: 'OPEN' | 'CLOSED' | 'CANCELLED'
   due_in_warehouse_date?: string | null
   notes?: string
+  /**
+   * The group order this breaks down. `null` detaches it.
+   *
+   * Amendable because the create form did not always ask for it, so orders
+   * exist that break down a group order without saying so — and the
+   * requirement then reads as wholly unmet. Cancelling and re-raising is
+   * not a fair repair for a document that funds a Tailoring Center.
+   */
+  group_order?: number | null
 }
 
 export function amendProductionOrder(id: number, body: ProductionOrderAmendment) {

@@ -32,8 +32,8 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AlertTriangle, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { Button, LoadingScreen } from '@/components'
-import { isBefore, todayISO } from '@/domain/dates'
-import { formatUGX, multiplyMoney, sumLineTotals } from '@/domain/money'
+import { formatDay, isBefore, todayISO } from '@/domain/dates'
+import { formatQuantity, formatUGX, multiplyMoney, sumLineTotals } from '@/domain/money'
 import { AppShell } from '@/features/shell/components/AppShell'
 import {
   useCreateProductionOrder,
@@ -41,6 +41,10 @@ import {
   useTailoringCenters,
   useWarehouses,
 } from '../hooks/useProductionOrders'
+import {
+  useGroupOrderReconciliation,
+  useOpenGroupOrders,
+} from '@/features/procurement/hooks/useGroupOrders'
 import type { Sku } from '@/api/types'
 
 interface DraftLine {
@@ -68,9 +72,11 @@ export function CreateProductionOrderScreen() {
 
   const centers = centersQuery.data?.results ?? []
   const warehouses = warehousesQuery.data?.results ?? []
+  const openGroupOrders = useOpenGroupOrders().data ?? []
   const skus = useMemo(() => skusQuery.data ?? [], [skusQuery.data])
   const submitting = create.isPending
 
+  const [groupOrder, setGroupOrder] = useState<number | null>(null)
   const [center, setCenter] = useState<number | null>(null)
   const [warehouse, setWarehouse] = useState<number | null>(null)
   const [orderDate, setOrderDate] = useState(todayISO)
@@ -79,6 +85,25 @@ export function CreateProductionOrderScreen() {
   // Lazy: the eager form runs blankLine() on every render and throws the
   // result away, bumping the key counter for nothing.
   const [lines, setLines] = useState<DraftLine[]>(() => [blankLine()])
+
+  /*
+    How much of the chosen group order is still unordered, keyed by SKU
+    number — which is what the reconciliation returns.
+
+    The same figures the group order's own screen shows, fetched here so
+    somebody raising the order sees them while they type rather than after.
+    `difference` is ordered minus requested, so a shortfall is negative and
+    the outstanding quantity is its absolute value.
+  */
+  const reconciliation = useGroupOrderReconciliation(groupOrder ?? 0)
+  const outstanding = useMemo(() => {
+    const map = new Map<string, number>()
+    if (groupOrder === null) return map
+    for (const row of reconciliation.data ?? []) {
+      if (row.difference < 0) map.set(row.sku_number, -row.difference)
+    }
+    return map
+  }, [groupOrder, reconciliation.data])
 
   const chosen = useMemo(
     () => new Set(lines.map((line) => line.sku).filter((id): id is number => id !== null)),
@@ -137,6 +162,16 @@ export function CreateProductionOrderScreen() {
       {
         tailoring_center: center,
         warehouse,
+        /*
+          The link that makes a group order mean anything.
+
+          Without it a production order is a standalone document, and the
+          group order it was meant to break down goes on reporting its full
+          requirement as unmet — somebody orders 200 of the 1,000 skirts and
+          the shortfall still reads 1,000. The field existed on the model and
+          the API from the start; this form simply never asked for it.
+        */
+        group_order: groupOrder,
         order_date: orderDate,
         due_in_warehouse_date: dueDate || null,
         notes: notes.trim() || undefined,
@@ -176,6 +211,36 @@ export function CreateProductionOrderScreen() {
       <div className="compose">
         <section className="card-panel compose__details">
           <h2 className="card-panel__title card-panel__title--accent">Order Details</h2>
+
+          {/*
+            First, because it changes what the rest of the form means: a
+            production order against a group order is a part of a known
+            requirement, and the table below says how much of it is still
+            outstanding.
+          */}
+          <div className="field field--stacked">
+            <label htmlFor="po-group-order">Group Order</label>
+            <select
+              id="po-group-order"
+              className="input"
+              value={groupOrder ?? ''}
+              onChange={(event) =>
+                setGroupOrder(event.target.value ? Number(event.target.value) : null)
+              }
+            >
+              <option value="">None — a standalone order</option>
+              {openGroupOrders.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.number} — {formatDay(entry.order_date)}
+                </option>
+              ))}
+            </select>
+            <p className="field__hint">
+              {groupOrder === null
+                ? 'Which requirement this breaks down. Leave it as None for a reorder or an emergency order that has no group order behind it.'
+                : 'The quantity still outstanding on this group order is shown against each item below.'}
+            </p>
+          </div>
 
           <div className="field field--stacked">
             <label htmlFor="po-center">Tailoring Center</label>
@@ -321,6 +386,22 @@ export function CreateProductionOrderScreen() {
                           <p className="line-note">
                             {sku.number} · list{' '}
                             {sku.unit_price ? formatUGX(sku.unit_price) : 'no price on file'}
+                            {/*
+                              What the group order still needs of this
+                              garment. Shown beside the quantity being typed
+                              rather than on a screen somebody has to go
+                              back to — the number is only useful at the
+                              moment the quantity is being decided.
+                            */}
+                            {outstanding.has(sku.number) && (
+                              <>
+                                {' · '}
+                                <strong className="line-note__outstanding">
+                                  {formatQuantity(outstanding.get(sku.number) as number)} still
+                                  to order
+                                </strong>
+                              </>
+                            )}
                           </p>
                         )}
                       </td>

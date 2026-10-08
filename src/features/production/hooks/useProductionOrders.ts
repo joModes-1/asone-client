@@ -135,6 +135,42 @@ export function useCreateProductionOrder() {
  * refusal is surfaced verbatim — it names the quantity received and says to
  * close the order instead, which is more use than "could not cancel".
  */
+/**
+ * Attach a production order to a group order after the fact — or detach it.
+ *
+ * The link is what makes a group order mean anything: `reconcile()` counts
+ * the production orders pointing at it, so an order raised without one
+ * leaves the requirement reading as wholly unmet. The create form did not
+ * ask for it for a while, which means there are real orders that break down
+ * a group order and do not say so.
+ *
+ * Repairable rather than re-raised, because a production order funds a
+ * Tailoring Center and the document has to survive.
+ */
+export function useAttachToGroupOrder(id: number) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (groupOrder: number | null) =>
+      procurement.amendProductionOrder(id, { group_order: groupOrder }),
+    onSuccess: (order) => {
+      void queryClient.invalidateQueries({ queryKey: ['production-orders'] })
+      // The requirement it now counts against — on both the old group
+      // order and the new one, so the whole family goes.
+      void queryClient.invalidateQueries({ queryKey: ['group-orders'] })
+      snackbar.success(
+        order.group_order_number
+          ? `${order.number} now counts towards ${order.group_order_number}`
+          : `${order.number} is now a standalone order`,
+        'The group order\u2019s requirement figures have been recalculated.',
+      )
+    },
+    onError: (error) => {
+      snackbar.error('That link could not be changed', toApiError(error).message)
+    },
+  })
+}
+
 export function useCancelProductionOrder(id: number) {
   const queryClient = useQueryClient()
 

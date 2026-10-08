@@ -32,8 +32,10 @@ import { fulfilmentTone } from '@/domain/production'
 import { relativeTime } from '@/domain/dates'
 import { canRaiseProductionOrder, canReceiveAndShip } from '@/domain/access'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { useOpenGroupOrders } from '@/features/procurement/hooks/useGroupOrders'
 import { AppShell } from '@/features/shell/components/AppShell'
 import {
+  useAttachToGroupOrder,
   useCancelProductionOrder,
   usePostReceipt,
   useOrderOutstanding,
@@ -69,6 +71,8 @@ export function ProductionOrderDetailScreen() {
   const manifest = useOrderOutstanding(id)
   const receipts = useOrderReceipts(id)
   const cancel = useCancelProductionOrder(id)
+  const attach = useAttachToGroupOrder(id)
+  const openGroupOrders = useOpenGroupOrders(canRaiseProductionOrder(user)).data ?? []
   const postReceipt = usePostReceipt()
   const canReceive = canReceiveAndShip(user)
 
@@ -160,6 +164,61 @@ export function ProductionOrderDetailScreen() {
           <p className="fact-card__note">
             {order.line_count} SKUs · {formatQuantity(order.total_quantity)} physical uniforms
           </p>
+        </section>
+
+        {/*
+          Which requirement this order counts against.
+
+          Its own card, and editable, because the link is invisible and
+          consequential: `reconcile()` counts the production orders pointing
+          at a group order, so an order with none leaves that requirement
+          reading as wholly unmet — somebody orders 200 of the 1,000 skirts
+          and the shortfall still says 1,000. The create form did not always
+          ask for it, so orders exist that need attaching, and cancelling a
+          document that funds a Tailoring Center is not a fair repair.
+        */}
+        <section className="fact-card">
+          <p className="fact-card__label">Group Order</p>
+          <p className="fact-card__value">
+            {order.group_order_number ? (
+              <Link to={`/group-orders/${order.group_order}`}>
+                {order.group_order_number}
+              </Link>
+            ) : (
+              'None'
+            )}
+          </p>
+          {canRaiseProductionOrder(user) && order.status !== 'CANCELLED' ? (
+            <select
+              className="input input--compact no-print"
+              aria-label="The group order this breaks down"
+              value={order.group_order ?? ''}
+              disabled={attach.isPending}
+              onChange={(event) =>
+                attach.mutate(event.target.value ? Number(event.target.value) : null)
+              }
+            >
+              <option value="">None — a standalone order</option>
+              {openGroupOrders.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.number}
+                </option>
+              ))}
+              {/* The one it is on, even if that one has since been closed —
+                  otherwise the select would silently show "None". */}
+              {order.group_order !== null &&
+                order.group_order !== undefined &&
+                !openGroupOrders.some((entry) => entry.id === order.group_order) && (
+                  <option value={order.group_order}>{order.group_order_number}</option>
+                )}
+            </select>
+          ) : (
+            <p className="fact-card__note">
+              {order.group_order_number
+                ? 'This order counts towards that requirement'
+                : 'Counts towards no group order'}
+            </p>
+          )}
         </section>
       </div>
 

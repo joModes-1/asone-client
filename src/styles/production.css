@@ -546,3 +546,21 @@ span.line-note { display: block; }
   font-size: var(--text-caption);
   color: var(--text-secondary);
 }
+
+/* "800 still to order", beside a line on a production order.
+ *
+ * Coloured rather than bold alone, because it sits in a muted note next to
+ * the SKU number and the list price and is the one part of that line
+ * somebody is actually deciding against. */
+.line-note__outstanding { color: var(--warning-ink); }
+
+/* A `<select>` sitting inside a fact card, where the card's own value line
+   is the display and this is the control that changes it. Full width and
+   small, so it reads as part of the card rather than as a form dropped
+   into one. */
+.input--compact {
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-caption);
+}
